@@ -1,0 +1,340 @@
+
+package rules
+
+import model.Patient;
+import model.RegionalDisease;
+import model.MelanomaClassification;
+import model.NCategory;
+
+
+// N_R01: No regional nodes or locoregional metastasis -> N0
+rule "N_R01 - N0"
+salience 9000
+when
+    $patient : Patient(
+        $id : patientId,
+        $regional : regionalDisease
+    )
+
+    eval($regional != null &&
+         $regional.getInvolvedRegionalNodes() == 0 &&
+         !$regional.isInTransitMetastasis() &&
+         !$regional.isSatelliteMetastasis() &&
+         !$regional.isMicrosatelliteMetastasis() &&
+         !$regional.isMattedNodes())
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        tCategory != null,
+        nCategory == null
+    )
+then
+    $classification.setNCategory(NCategory.N0);
+    update($classification);
+
+    System.out.println("Patient " + $id + " -> N_R01 -> N0");
+end
+
+
+// N_R02: One clinically occult node -> N1A
+rule "N_R02 - N1A"
+salience 9000
+when
+    $patient : Patient(
+        $id : patientId,
+        $regional : regionalDisease
+    )
+
+    eval($regional != null &&
+         $regional.getInvolvedRegionalNodes() == 1 &&
+         !$regional.isClinicallyDetectedNode() &&
+         !$regional.hasLocoregionalMetastasis() &&
+         !$regional.isMattedNodes())
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        tCategory != null,
+        nCategory == null
+    )
+then
+    $classification.setNCategory(NCategory.N1A);
+    update($classification);
+
+    System.out.println("Patient " + $id + " -> N_R02 -> N1A");
+end
+
+
+// N_R03: One clinically detected node -> N1B
+rule "N_R03 - N1B"
+salience 9000
+when
+    $patient : Patient(
+        $id : patientId,
+        $regional : regionalDisease
+    )
+
+    eval($regional != null &&
+         $regional.getInvolvedRegionalNodes() == 1 &&
+         $regional.isClinicallyDetectedNode() &&
+         !$regional.hasLocoregionalMetastasis() &&
+         !$regional.isMattedNodes())
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        tCategory != null,
+        nCategory == null
+    )
+then
+    $classification.setNCategory(NCategory.N1B);
+    update($classification);
+
+    System.out.println("Patient " + $id + " -> N_R03 -> N1B");
+end
+
+
+// N_R04: No involved nodes + locoregional metastasis -> N1C
+rule "N_R04 - N1C"
+salience 9000
+when
+    $patient : Patient(
+        $id : patientId,
+        $regional : regionalDisease
+    )
+
+    eval($regional != null &&
+         $regional.getInvolvedRegionalNodes() == 0 &&
+         $regional.hasLocoregionalMetastasis() &&
+         !$regional.isMattedNodes())
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        tCategory != null,
+        nCategory == null
+    )
+then
+    $classification.setNCategory(NCategory.N1C);
+    update($classification);
+
+    System.out.println("Patient " + $id + " -> N_R04 -> N1C");
+end
+
+
+// N_R05: 2-3 clinically occult nodes -> N2A
+rule "N_R05 - N2A"
+salience 9000
+when
+    $patient : Patient(
+        $id : patientId,
+        $regional : regionalDisease
+    )
+
+    eval($regional != null &&
+         $regional.getInvolvedRegionalNodes() >= 2 &&
+         $regional.getInvolvedRegionalNodes() <= 3 &&
+         !$regional.isClinicallyDetectedNode() &&
+         !$regional.hasLocoregionalMetastasis() &&
+         !$regional.isMattedNodes())
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        tCategory != null,
+        nCategory == null
+    )
+then
+    $classification.setNCategory(NCategory.N2A);
+    update($classification);
+
+    System.out.println("Patient " + $id + " -> N_R05 -> N2A");
+end
+
+
+// N_R06: 2-3 nodes, at least one clinically detected -> N2B
+rule "N_R06 - N2B"
+salience 9000
+when
+    $patient : Patient(
+        $id : patientId,
+        $regional : regionalDisease
+    )
+
+    eval($regional != null &&
+         $regional.getInvolvedRegionalNodes() >= 2 &&
+         $regional.getInvolvedRegionalNodes() <= 3 &&
+         $regional.isClinicallyDetectedNode() &&
+         !$regional.hasLocoregionalMetastasis() &&
+         !$regional.isMattedNodes())
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        tCategory != null,
+        nCategory == null
+    )
+then
+    $classification.setNCategory(NCategory.N2B);
+    update($classification);
+
+    System.out.println("Patient " + $id + " -> N_R06 -> N2B");
+end
+
+
+// N_R07: One node + locoregional metastasis -> N2C
+rule "N_R07 - N2C"
+salience 9000
+when
+    $patient : Patient(
+        $id : patientId,
+        $regional : regionalDisease
+    )
+
+    eval($regional != null &&
+         $regional.getInvolvedRegionalNodes() == 1 &&
+         $regional.hasLocoregionalMetastasis() &&
+         !$regional.isMattedNodes())
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        tCategory != null,
+        nCategory == null
+    )
+then
+    $classification.setNCategory(NCategory.N2C);
+    update($classification);
+
+    System.out.println("Patient " + $id + " -> N_R07 -> N2C");
+end
+
+
+// N_R08: 4 or more clinically occult nodes -> N3A
+rule "N_R08 - N3A"
+salience 9000
+when
+    $patient : Patient(
+        $id : patientId,
+        $regional : regionalDisease
+    )
+
+    eval($regional != null &&
+         $regional.getInvolvedRegionalNodes() >= 4 &&
+         !$regional.isClinicallyDetectedNode() &&
+         !$regional.hasLocoregionalMetastasis() &&
+         !$regional.isMattedNodes())
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        tCategory != null,
+        nCategory == null
+    )
+then
+    $classification.setNCategory(NCategory.N3A);
+    update($classification);
+
+    System.out.println("Patient " + $id + " -> N_R08 -> N3A");
+end
+
+
+// N_R09: 4 or more nodes, at least one clinically detected -> N3B
+rule "N_R09 - N3B"
+salience 9000
+when
+    $patient : Patient(
+        $id : patientId,
+        $regional : regionalDisease
+    )
+
+    eval($regional != null &&
+         $regional.getInvolvedRegionalNodes() >= 4 &&
+         $regional.isClinicallyDetectedNode() &&
+         !$regional.hasLocoregionalMetastasis() &&
+         !$regional.isMattedNodes())
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        tCategory != null,
+        nCategory == null
+    )
+then
+    $classification.setNCategory(NCategory.N3B);
+    update($classification);
+
+    System.out.println("Patient " + $id + " -> N_R09 -> N3B");
+end
+
+
+// N_R10: Matted nodes, no locoregional metastasis -> N3B
+rule "N_R10 - N3B matted nodes"
+salience 9000
+when
+    $patient : Patient(
+        $id : patientId,
+        $regional : regionalDisease
+    )
+
+    eval($regional != null &&
+         $regional.isMattedNodes() &&
+         !$regional.hasLocoregionalMetastasis())
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        tCategory != null,
+        nCategory == null
+    )
+then
+    $classification.setNCategory(NCategory.N3B);
+    update($classification);
+
+    System.out.println("Patient " + $id + " -> N_R10 -> N3B");
+end
+
+
+// N_R11: 2 or more nodes + locoregional metastasis -> N3C
+rule "N_R11 - N3C"
+salience 9000
+when
+    $patient : Patient(
+        $id : patientId,
+        $regional : regionalDisease
+    )
+
+    eval($regional != null &&
+         $regional.getInvolvedRegionalNodes() >= 2 &&
+         $regional.hasLocoregionalMetastasis() &&
+         !$regional.isMattedNodes())
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        tCategory != null,
+        nCategory == null
+    )
+then
+    $classification.setNCategory(NCategory.N3C);
+    update($classification);
+
+    System.out.println("Patient " + $id + " -> N_R11 -> N3C");
+end
+
+
+// N_R12: Matted nodes + locoregional metastasis -> N3C
+rule "N_R12 - N3C matted nodes"
+salience 9000
+when
+    $patient : Patient(
+        $id : patientId,
+        $regional : regionalDisease
+    )
+
+    eval($regional != null &&
+         $regional.isMattedNodes() &&
+         $regional.hasLocoregionalMetastasis())
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        tCategory != null,
+        nCategory == null
+    )
+then
+    $classification.setNCategory(NCategory.N3C);
+    update($classification);
+
+    System.out.println("Patient " + $id + " -> N_R12 -> N3C");
+end
+
