@@ -19,6 +19,20 @@ public class DistantDisease {
                           boolean cnsMetastasis,
                           LdhStatus ldhStatus) {
 
+
+        if (!distantMetastasis &&
+                (distantSkinSoftTissueNonregionalNode ||
+                        lungMetastasis ||
+                        nonCnsVisceralMetastasis ||
+                        cnsMetastasis)) {
+
+            throw new IllegalArgumentException(
+                    "Inconsistent distant disease data: " +
+                            "a metastatic site is present but distantMetastasis is false."
+            );
+        }
+
+
         this.distantMetastasis = distantMetastasis;
         this.distantSkinSoftTissueNonregionalNode =
                 distantSkinSoftTissueNonregionalNode;

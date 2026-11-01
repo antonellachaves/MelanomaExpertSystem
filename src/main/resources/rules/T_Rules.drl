@@ -2,12 +2,15 @@
 package rules
 
 import model.Patient;
-import model.PrimaryTumor;
 import model.MelanomaClassification;
 import model.TCategory;
+import model.PrimaryTumorType;
 
 
+// ======================================================
 // T_R01: Breslow < 0.8 mm, no ulceration -> T1A
+// ======================================================
+
 rule "T_R01 - T1A"
 salience 10000
 when
@@ -17,8 +20,10 @@ when
     )
 
     eval($tumor != null &&
+         $tumor.getType() == PrimaryTumorType.INVASIVE &&
+         $tumor.getBreslowThicknessMm() != null &&
          $tumor.getBreslowThicknessMm() < 0.8 &&
-         !$tumor.isUlceration())
+         Boolean.FALSE.equals($tumor.getUlceration()))
 
     $classification : MelanomaClassification(
         patientId == $id,
@@ -32,7 +37,10 @@ then
 end
 
 
+// ======================================================
 // T_R02: Breslow < 0.8 mm, ulceration -> T1B
+// ======================================================
+
 rule "T_R02 - T1B"
 salience 10000
 when
@@ -42,8 +50,10 @@ when
     )
 
     eval($tumor != null &&
+         $tumor.getType() == PrimaryTumorType.INVASIVE &&
+         $tumor.getBreslowThicknessMm() != null &&
          $tumor.getBreslowThicknessMm() < 0.8 &&
-         $tumor.isUlceration())
+         Boolean.TRUE.equals($tumor.getUlceration()))
 
     $classification : MelanomaClassification(
         patientId == $id,
@@ -57,7 +67,11 @@ then
 end
 
 
-// T_R03: Breslow 0.8-1.0 mm, no ulceration -> T1B
+// ======================================================
+// T_R03: Breslow 0.8-1.0 mm -> T1B
+// Ulceration does not change the T category
+// ======================================================
+
 rule "T_R03 - T1B"
 salience 10000
 when
@@ -67,9 +81,10 @@ when
     )
 
     eval($tumor != null &&
+         $tumor.getType() == PrimaryTumorType.INVASIVE &&
+         $tumor.getBreslowThicknessMm() != null &&
          $tumor.getBreslowThicknessMm() >= 0.8 &&
-         $tumor.getBreslowThicknessMm() <= 1.0 &&
-         !$tumor.isUlceration())
+         $tumor.getBreslowThicknessMm() <= 1.0)
 
     $classification : MelanomaClassification(
         patientId == $id,
@@ -83,33 +98,13 @@ then
 end
 
 
-// T_R04: Breslow 0.8-1.0 mm, ulceration -> T1B
-rule "T_R04 - T1B"
-salience 10000
-when
-    $patient : Patient(
-        $id : patientId,
-        $tumor : primaryTumor
-    )
-
-    eval($tumor != null &&
-         $tumor.getBreslowThicknessMm() >= 0.8 &&
-         $tumor.getBreslowThicknessMm() <= 1.0 &&
-         $tumor.isUlceration())
-
-    $classification : MelanomaClassification(
-        patientId == $id,
-        tCategory == null
-    )
-then
-    $classification.setTCategory(TCategory.T1B);
-    update($classification);
-
-    System.out.println("Patient " + $id + " -> T_R04 -> T1B");
-end
+// T_R04 removed because it is redundant with T_R03
 
 
-// T_R05: Breslow >1.0-2.0 mm, no ulceration -> T2A
+// ======================================================
+// T_R05: Breslow > 1.0-2.0 mm, no ulceration -> T2A
+// ======================================================
+
 rule "T_R05 - T2A"
 salience 10000
 when
@@ -119,9 +114,11 @@ when
     )
 
     eval($tumor != null &&
+         $tumor.getType() == PrimaryTumorType.INVASIVE &&
+         $tumor.getBreslowThicknessMm() != null &&
          $tumor.getBreslowThicknessMm() > 1.0 &&
          $tumor.getBreslowThicknessMm() <= 2.0 &&
-         !$tumor.isUlceration())
+         Boolean.FALSE.equals($tumor.getUlceration()))
 
     $classification : MelanomaClassification(
         patientId == $id,
@@ -135,7 +132,10 @@ then
 end
 
 
-// T_R06: Breslow >1.0-2.0 mm, ulceration -> T2B
+// ======================================================
+// T_R06: Breslow > 1.0-2.0 mm, ulceration -> T2B
+// ======================================================
+
 rule "T_R06 - T2B"
 salience 10000
 when
@@ -145,9 +145,11 @@ when
     )
 
     eval($tumor != null &&
+         $tumor.getType() == PrimaryTumorType.INVASIVE &&
+         $tumor.getBreslowThicknessMm() != null &&
          $tumor.getBreslowThicknessMm() > 1.0 &&
          $tumor.getBreslowThicknessMm() <= 2.0 &&
-         $tumor.isUlceration())
+         Boolean.TRUE.equals($tumor.getUlceration()))
 
     $classification : MelanomaClassification(
         patientId == $id,
@@ -161,7 +163,10 @@ then
 end
 
 
-// T_R07: Breslow >2.0-4.0 mm, no ulceration -> T3A
+// ======================================================
+// T_R07: Breslow > 2.0-4.0 mm, no ulceration -> T3A
+// ======================================================
+
 rule "T_R07 - T3A"
 salience 10000
 when
@@ -171,9 +176,11 @@ when
     )
 
     eval($tumor != null &&
+         $tumor.getType() == PrimaryTumorType.INVASIVE &&
+         $tumor.getBreslowThicknessMm() != null &&
          $tumor.getBreslowThicknessMm() > 2.0 &&
          $tumor.getBreslowThicknessMm() <= 4.0 &&
-         !$tumor.isUlceration())
+         Boolean.FALSE.equals($tumor.getUlceration()))
 
     $classification : MelanomaClassification(
         patientId == $id,
@@ -187,7 +194,10 @@ then
 end
 
 
-// T_R08: Breslow >2.0-4.0 mm, ulceration -> T3B
+// ======================================================
+// T_R08: Breslow > 2.0-4.0 mm, ulceration -> T3B
+// ======================================================
+
 rule "T_R08 - T3B"
 salience 10000
 when
@@ -197,9 +207,11 @@ when
     )
 
     eval($tumor != null &&
+         $tumor.getType() == PrimaryTumorType.INVASIVE &&
+         $tumor.getBreslowThicknessMm() != null &&
          $tumor.getBreslowThicknessMm() > 2.0 &&
          $tumor.getBreslowThicknessMm() <= 4.0 &&
-         $tumor.isUlceration())
+         Boolean.TRUE.equals($tumor.getUlceration()))
 
     $classification : MelanomaClassification(
         patientId == $id,
@@ -213,7 +225,10 @@ then
 end
 
 
-// T_R09: Breslow >4.0 mm, no ulceration -> T4A
+// ======================================================
+// T_R09: Breslow > 4.0 mm, no ulceration -> T4A
+// ======================================================
+
 rule "T_R09 - T4A"
 salience 10000
 when
@@ -223,8 +238,10 @@ when
     )
 
     eval($tumor != null &&
+         $tumor.getType() == PrimaryTumorType.INVASIVE &&
+         $tumor.getBreslowThicknessMm() != null &&
          $tumor.getBreslowThicknessMm() > 4.0 &&
-         !$tumor.isUlceration())
+         Boolean.FALSE.equals($tumor.getUlceration()))
 
     $classification : MelanomaClassification(
         patientId == $id,
@@ -238,7 +255,10 @@ then
 end
 
 
-// T_R10: Breslow >4.0 mm, ulceration -> T4B
+// ======================================================
+// T_R10: Breslow > 4.0 mm, ulceration -> T4B
+// ======================================================
+
 rule "T_R10 - T4B"
 salience 10000
 when
@@ -248,8 +268,10 @@ when
     )
 
     eval($tumor != null &&
+         $tumor.getType() == PrimaryTumorType.INVASIVE &&
+         $tumor.getBreslowThicknessMm() != null &&
          $tumor.getBreslowThicknessMm() > 4.0 &&
-         $tumor.isUlceration())
+         Boolean.TRUE.equals($tumor.getUlceration()))
 
     $classification : MelanomaClassification(
         patientId == $id,
@@ -263,3 +285,82 @@ then
 end
 
 
+// ======================================================
+// T_R11: Melanoma in situ -> TIS
+// ======================================================
+
+rule "T_R11 - TIS"
+salience 10000
+when
+    $patient : Patient(
+        $id : patientId,
+        $tumor : primaryTumor
+    )
+
+    eval($tumor != null &&
+         $tumor.getType() == PrimaryTumorType.IN_SITU)
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        tCategory == null
+    )
+then
+    $classification.setTCategory(TCategory.TIS);
+    update($classification);
+
+    System.out.println("Patient " + $id + " -> T_R11 -> TIS");
+end
+
+
+// ======================================================
+// T_R12: No evidence of primary tumor -> T0
+// ======================================================
+
+rule "T_R12 - T0"
+salience 10000
+when
+    $patient : Patient(
+        $id : patientId,
+        $tumor : primaryTumor
+    )
+
+    eval($tumor != null &&
+         $tumor.getType() == PrimaryTumorType.NO_PRIMARY_TUMOR)
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        tCategory == null
+    )
+then
+    $classification.setTCategory(TCategory.T0);
+    update($classification);
+
+    System.out.println("Patient " + $id + " -> T_R12 -> T0");
+end
+
+
+// ======================================================
+// T_R13: Primary tumor cannot be assessed -> TX
+// ======================================================
+
+rule "T_R13 - TX"
+salience 10000
+when
+    $patient : Patient(
+        $id : patientId,
+        $tumor : primaryTumor
+    )
+
+    eval($tumor != null &&
+         $tumor.getType() == PrimaryTumorType.CANNOT_ASSESS)
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        tCategory == null
+    )
+then
+    $classification.setTCategory(TCategory.TX);
+    update($classification);
+
+    System.out.println("Patient " + $id + " -> T_R13 -> TX");
+end

@@ -1,6 +1,11 @@
+
 package model;
 
 public enum TCategory {
+
+    TX,     // Primary tumor thickness cannot be assessed
+    T0,     // No evidence of primary tumor
+    TIS,    // Melanoma in situ
 
     T1A,
     T1B,

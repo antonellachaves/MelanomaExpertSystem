@@ -8,24 +8,23 @@ public class Main {
         MelanomaExpertSystem expertSystem =
                 new MelanomaExpertSystem();
 
-        // ----------------------------------
-        // 1. First evaluation: Patient 1002
-        // ----------------------------------
+        // 1. Create a patient
+        Patient patient = new Patient(1002);
 
-        Patient patientOriginal = new Patient(1002);
+        // 2. Primary tumor information
+        PrimaryTumor primaryTumor = new PrimaryTumor(1.5, false);
+        patient.setPrimaryTumor(primaryTumor);
 
-        patientOriginal.setPrimaryTumor(
-                new PrimaryTumor(1.5, false)
-        );
-
-        patientOriginal.setRegionalDisease(
+        // 3. Regional disease information
+        patient.setRegionalDisease(
                 new RegionalDisease(
                         0, false, false,
                         false, false, false
                 )
         );
 
-        patientOriginal.setDistantDisease(
+        // 4. Distant disease information
+        patient.setDistantDisease(
                 new DistantDisease(
                         false, false, false,
                         false, false,
@@ -33,97 +32,40 @@ public class Main {
                 )
         );
 
-        System.out.println("=== FIRST EVALUATION ===");
+        // 5. Additional clinical information
+        ClinicalContext context = patient.getClinicalContext();
 
-        MelanomaClassification resultOriginal =
-                expertSystem.classify(patientOriginal);
+        context.setSuspiciousRegionalNode(true);
+        context.setNewSymptoms(true);
 
-        printResult(resultOriginal);
+        // 6. TNM classification
+        System.out.println("=== MELANOMA CLASSIFICATION ===");
 
+        MelanomaClassification classification =
+                expertSystem.classify(patient);
 
-        // ----------------------------------
-        // 2. Updated clinical information
-        //    Same patient ID, new data
-        // ----------------------------------
+        System.out.println("\n=== CLASSIFICATION RESULT ===");
+        System.out.println("Patient ID: " + classification.getPatientId());
+        System.out.println("T category: " + classification.getTCategory());
+        System.out.println("N category: " + classification.getNCategory());
+        System.out.println("M category: " + classification.getMCategory());
+        System.out.println("Stage: " + classification.getStage());
 
-        Patient patientUpdated = new Patient(1002);
+        // 7. Clinical recommendations
+        System.out.println("\n=== CLINICAL RECOMMENDATIONS ===");
 
-        // Breslow changed from 1.5 mm to 4.5 mm
-        patientUpdated.setPrimaryTumor(
-                new PrimaryTumor(4.5, false)
-        );
-
-        patientUpdated.setRegionalDisease(
-                new RegionalDisease(
-                        0, false, false,
-                        false, false, false
-                )
-        );
-
-        patientUpdated.setDistantDisease(
-                new DistantDisease(
-                        false, false, false,
-                        false, false,
-                        LdhStatus.NOT_RECORDED
-                )
-        );
-
-        System.out.println();
-        System.out.println("=== SECOND EVALUATION ===");
-
-        MelanomaClassification resultUpdated =
-                expertSystem.classify(patientUpdated);
-
-        printResult(resultUpdated);
-
-
-        // ----------------------------------
-        // 3. Compare both evaluations
-        // ----------------------------------
-
-        System.out.println();
-        System.out.println("=== COMPARISON ===");
+        RecommendationResult recommendations =
+                expertSystem.generateRecommendations(patient, classification);
 
         System.out.println(
-                "Original stage = " + resultOriginal.getStage()
+                "Total recommendations: "
+                        + recommendations.getRecommendationCount()
         );
 
-        System.out.println(
-                "Updated stage = " + resultUpdated.getStage()
-        );
+        for (ClinicalRecommendation recommendation :
+                recommendations.getRecommendations()) {
 
-        System.out.println(
-                "Same classification object? " +
-                        (resultOriginal == resultUpdated)
-        );
-    }
-
-
-    // ----------------------------------
-    // Helper method to display results
-    // ----------------------------------
-
-    private static void printResult(
-            MelanomaClassification classification) {
-
-        System.out.println(
-                "Patient ID = " + classification.getPatientId()
-        );
-
-        System.out.println(
-                "T category = " + classification.getTCategory()
-        );
-
-        System.out.println(
-                "N category = " + classification.getNCategory()
-        );
-
-        System.out.println(
-                "M category = " + classification.getMCategory()
-        );
-
-        System.out.println(
-                "Stage = " + classification.getStage()
-        );
+            System.out.println(recommendation);
+        }
     }
 }

@@ -2,6 +2,7 @@ package model;
 
 public enum MelanomaStage {
 
+    ZERO,
     IA,
     IB,
     IIA,

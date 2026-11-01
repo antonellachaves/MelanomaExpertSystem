@@ -1,0 +1,616 @@
+
+package rules
+
+import model.Patient;
+import model.RecommendationResult;
+import model.ClinicalRecommendation;
+import model.MelanomaClassification;
+import model.MelanomaStage;
+import model.BaselineImagingStatus;
+import model.SurgeryStatus;
+import model.BrafStatus;
+import model.SentinelNodeBiopsyStatus;
+import model.PrimaryTumorType;
+import model.DiseaseStatus;
+
+
+rule "GEN-01A - Suspicious node without ultrasound"
+    salience 100
+    when
+        $patient : Patient(
+            clinicalContext.suspiciousRegionalNode == Boolean.TRUE,
+            clinicalContext.regionalNodeUltrasoundStatus ==
+                BaselineImagingStatus.NOT_PERFORMED
+        )
+        $result : RecommendationResult()
+    then
+        $result.addRecommendation(
+            new ClinicalRecommendation(
+                "GEN-01A",
+                "A suspicious regional lymph node has been identified. "
+                + "Recommend targeted regional lymph node ultrasound "
+                + "and consider tissue sampling to confirm metastasis.",
+                100
+            )
+        );
+end
+
+rule "GEN-01B - Suspicious node with ultrasound performed"
+    salience 100
+    when
+        $patient : Patient(
+            clinicalContext.suspiciousRegionalNode == Boolean.TRUE,
+            clinicalContext.regionalNodeUltrasoundStatus ==
+                BaselineImagingStatus.COMPLETE
+        )
+        $result : RecommendationResult()
+    then
+        $result.addRecommendation(
+            new ClinicalRecommendation(
+                "GEN-01B",
+                "A suspicious regional lymph node has been identified "
+                + "and regional ultrasound has been performed. "
+                + "Review the ultrasound findings and consider "
+                + "fine-needle aspiration cytology or ultrasound-guided "
+                + "core needle biopsy if metastasis is not yet confirmed.",
+                100
+            )
+        );
+end
+
+rule "GEN-01C - Suspicious node with unknown ultrasound status"
+    salience 100
+    when
+        $patient : Patient(
+            clinicalContext.suspiciousRegionalNode == Boolean.TRUE,
+            clinicalContext.regionalNodeUltrasoundStatus ==
+                BaselineImagingStatus.UNKNOWN
+        )
+        $result : RecommendationResult()
+    then
+        $result.addRecommendation(
+            new ClinicalRecommendation(
+                "GEN-01C",
+                "A suspicious regional lymph node has been identified, "
+                + "but regional ultrasound status is unknown. "
+                + "Verify whether ultrasound and appropriate nodal "
+                + "assessment have already been performed.",
+                100
+            )
+        );
+end
+
+
+rule "GEN-02 - New symptoms suggesting recurrence"
+    salience 100
+    when
+        $patient : Patient(
+            clinicalContext.newSymptoms == Boolean.TRUE
+        )
+
+        $result : RecommendationResult()
+    then
+        $result.addRecommendation(
+            new ClinicalRecommendation(
+                "GEN-02",
+                "Perform prompt clinical assessment of newly reported symptoms, including examination of the skin, surgical scar and regional lymph nodes. Consider targeted imaging or histopathological confirmation when clinically indicated by suspected recurrence.",
+                100
+            )
+        );
+
+        System.out.println(
+            "Patient " + $patient.getPatientId()
+            + " -> GEN-02 recommendation generated"
+        );
+end
+
+
+
+
+rule "STAGE-00A - Melanoma in situ requiring excision"
+    salience 80
+    when
+        $patient : Patient(
+            clinicalContext.surgeryStatus == SurgeryStatus.NOT_PERFORMED ||
+            clinicalContext.surgeryStatus == SurgeryStatus.INCOMPLETE
+        )
+
+        $classification : MelanomaClassification(
+            stage == MelanomaStage.ZERO
+        )
+
+        $result : RecommendationResult()
+    then
+        $result.addRecommendation(
+            new ClinicalRecommendation(
+                "STAGE-00A",
+                "For melanoma in situ (stage 0), recommend assessment for complete surgical excision with appropriate margins. Review histopathological margins and complete excision if necessary.",
+                80
+            )
+        );
+
+        System.out.println(
+            "Patient " + $patient.getPatientId()
+            + " -> STAGE-00A recommendation generated"
+        );
+end
+
+
+rule "STAGE-00B - Melanoma in situ excision completed"
+    salience 80
+    when
+        $patient : Patient(
+            clinicalContext.surgeryStatus == SurgeryStatus.COMPLETE
+        )
+
+        $classification : MelanomaClassification(
+            stage == MelanomaStage.ZERO
+        )
+
+        $result : RecommendationResult()
+    then
+        $result.addRecommendation(
+            new ClinicalRecommendation(
+                "STAGE-00B",
+                "For melanoma in situ (stage 0) with completed surgical excision, verify documented histopathological clearance and continue appropriate dermatological follow-up. Further excision should depend on margin assessment and clinical findings.",
+                70
+            )
+        );
+
+        System.out.println(
+            "Patient " + $patient.getPatientId()
+            + " -> STAGE-00B recommendation generated"
+        );
+end
+
+
+rule "STAGE-00C - Melanoma in situ surgery status unknown"
+    salience 90
+    when
+        $patient : Patient(
+            clinicalContext.surgeryStatus == SurgeryStatus.UNKNOWN
+        )
+
+        $classification : MelanomaClassification(
+            stage == MelanomaStage.ZERO
+        )
+
+        $result : RecommendationResult()
+    then
+        $result.addRecommendation(
+            new ClinicalRecommendation(
+                "STAGE-00C",
+                "For melanoma in situ (stage 0), verify whether surgical excision has been performed and review the histopathological margin status before determining further management.",
+                90
+            )
+        );
+
+        System.out.println(
+            "Patient " + $patient.getPatientId()
+            + " -> STAGE-00C recommendation generated"
+        );
+end
+
+
+
+
+rule "DIAG-01 - Regional lymph node ultrasound for T1b or higher"
+    salience 80
+    when
+        $patient : Patient(
+            clinicalContext.regionalNodeUltrasoundStatus ==
+                model.BaselineImagingStatus.NOT_PERFORMED,
+
+            clinicalContext.suspiciousRegionalNode == Boolean.FALSE,
+
+            regionalDisease.clinicallyDetectedNode == false,
+
+            regionalDisease.involvedRegionalNodes == 0
+        )
+
+        $classification : MelanomaClassification(
+            tCategory != null,
+            (
+                tCategory == TCategory.T1B ||
+                tCategory == TCategory.T2A ||
+                tCategory == TCategory.T2B ||
+                tCategory == TCategory.T3A ||
+                tCategory == TCategory.T3B ||
+                tCategory == TCategory.T4A ||
+                tCategory == TCategory.T4B
+            ),
+            stage != MelanomaStage.IV
+        )
+
+        $result : RecommendationResult()
+    then
+        $result.addRecommendation(
+            new ClinicalRecommendation(
+                "DIAG-01",
+                "For cutaneous melanoma classified as T1b or higher without clinically detected regional nodal disease, consider regional lymph node ultrasound according to the EADO-EDF-EORTC 2024 diagnostic guideline. The ultrasound is recorded as not performed. Assess its indication within the overall staging and follow-up strategy.",
+                80
+            )
+        );
+
+        System.out.println(
+            "Patient " + $patient.getPatientId()
+            + " -> DIAG-01 recommendation generated"
+        );
+end
+
+
+
+rule "DATA-01 - Verify regional node ultrasound status"
+    salience 90
+    when
+        $patient : Patient(
+            clinicalContext.regionalNodeUltrasoundStatus ==
+                model.BaselineImagingStatus.UNKNOWN,
+
+            clinicalContext.suspiciousRegionalNode == Boolean.FALSE,
+
+            regionalDisease.clinicallyDetectedNode == false,
+
+            regionalDisease.involvedRegionalNodes == 0
+        )
+
+        MelanomaClassification(
+            tCategory != null,
+            (
+                tCategory == TCategory.T1B ||
+                tCategory == TCategory.T2A ||
+                tCategory == TCategory.T2B ||
+                tCategory == TCategory.T3A ||
+                tCategory == TCategory.T3B ||
+                tCategory == TCategory.T4A ||
+                tCategory == TCategory.T4B
+            ),
+            stage != MelanomaStage.IV
+        )
+
+        $result : RecommendationResult()
+    then
+        $result.addRecommendation(
+            new ClinicalRecommendation(
+                "DATA-01",
+                "For melanoma classified as T1b or higher, the regional lymph node ultrasound status is unknown. Verify whether the examination has already been performed and review its findings before deciding whether further regional nodal evaluation is needed.",
+                90
+            )
+        );
+
+        System.out.println(
+            "Patient " + $patient.getPatientId()
+            + " -> DATA-01 recommendation generated"
+        );
+end
+
+
+
+rule "DIAG-02 - Baseline staging imaging for stage IIB or higher"
+    salience 80
+    when
+        $patient : Patient(
+            clinicalContext.baselineImagingStatus ==
+                model.BaselineImagingStatus.NOT_PERFORMED
+        )
+
+        $classification : MelanomaClassification(
+            stage in (
+                MelanomaStage.IIB,
+                MelanomaStage.IIC,
+                MelanomaStage.IIIA,
+                MelanomaStage.IIIB,
+                MelanomaStage.IIIC,
+                MelanomaStage.IIID,
+                MelanomaStage.IV
+            )
+        )
+
+        $result : RecommendationResult()
+    then
+        $result.addRecommendation(
+            new ClinicalRecommendation(
+                "DIAG-02",
+                "For melanoma stage IIB or higher, baseline staging imaging is recorded as not performed. According to the EADO-EDF-EORTC 2024 diagnostic guideline, assess systemic staging with CT or PET-CT in combination with brain MRI. Adapt the imaging strategy to the patient's clinical condition, disease extent and previous investigations.",
+                80
+            )
+        );
+
+        System.out.println(
+            "Patient " + $patient.getPatientId()
+            + " -> DIAG-02 recommendation generated"
+        );
+end
+
+
+
+
+rule "MOL-01 - Review BRAF mutation testing"
+    salience 75
+    when
+        $patient : Patient(
+            clinicalContext.brafStatus == model.BrafStatus.UNKNOWN
+        )
+
+        MelanomaClassification(
+            stage in (
+                MelanomaStage.IIB,
+                MelanomaStage.IIC,
+                MelanomaStage.IIIA,
+                MelanomaStage.IIIB,
+                MelanomaStage.IIIC,
+                MelanomaStage.IIID,
+                MelanomaStage.IV
+            )
+        )
+
+        $result : RecommendationResult()
+    then
+        $result.addRecommendation(
+            new ClinicalRecommendation(
+                "MOL-01",
+                "For melanoma stage IIB or higher, verify whether molecular mutation testing has already been performed, particularly BRAF V600 testing, according to the EADO-EDF-EORTC 2024 diagnostic guideline. An unknown BRAF status does not necessarily mean that testing has not been performed.",
+                75
+            )
+        );
+end
+
+
+
+
+rule "SURG-01A - Definitive surgery not performed"
+    salience 85
+    when
+        Patient(
+            clinicalContext.surgeryStatus == model.SurgeryStatus.NOT_PERFORMED
+        )
+        MelanomaClassification(
+            stage in (
+                MelanomaStage.IA,
+                MelanomaStage.IB,
+                MelanomaStage.IIA,
+                MelanomaStage.IIB,
+                MelanomaStage.IIC
+            )
+        )
+        $result : RecommendationResult()
+    then
+        $result.addRecommendation(
+            new ClinicalRecommendation(
+                "SURG-01A",
+                "For localized invasive melanoma, definitive surgery is recorded as not performed. Review the indication for wide local excision with margins appropriate to Breslow thickness and anatomical location. Confirm whether the previous procedure was a diagnostic biopsy rather than definitive excision.",
+                85
+            )
+        );
+end
+
+
+rule "SURG-01B - Definitive surgery incomplete"
+    salience 85
+    when
+        Patient(
+            clinicalContext.surgeryStatus == model.SurgeryStatus.INCOMPLETE
+        )
+        MelanomaClassification(
+            stage in (
+                MelanomaStage.IA,
+                MelanomaStage.IB,
+                MelanomaStage.IIA,
+                MelanomaStage.IIB,
+                MelanomaStage.IIC
+            )
+        )
+        $result : RecommendationResult()
+    then
+        $result.addRecommendation(
+            new ClinicalRecommendation(
+                "SURG-01B",
+                "For localized invasive melanoma, surgery is recorded as incomplete. Review the operative and histopathology reports, including margin status, and assess whether further excision is indicated according to current melanoma treatment guidelines.",
+                85
+            )
+        );
+end
+
+
+rule "SURG-01C - Definitive surgery status unknown"
+    salience 90
+    when
+        Patient(
+            clinicalContext.surgeryStatus == model.SurgeryStatus.UNKNOWN
+        )
+        MelanomaClassification(
+            stage in (
+                MelanomaStage.IA,
+                MelanomaStage.IB,
+                MelanomaStage.IIA,
+                MelanomaStage.IIB,
+                MelanomaStage.IIC
+            )
+        )
+        $result : RecommendationResult()
+    then
+        $result.addRecommendation(
+            new ClinicalRecommendation(
+                "SURG-01C",
+                "For localized invasive melanoma, definitive surgical status is unknown. Verify whether wide local excision was performed and review the operative report, histopathological margins and completeness of excision before determining whether additional surgery is needed.",
+                90
+            )
+        );
+end
+
+
+
+rule "DIAG-03A - Offer SLNB for Breslow >= 1 mm"
+    salience 80
+    when
+        Patient(
+            primaryTumor.type == model.PrimaryTumorType.INVASIVE,
+            primaryTumor.breslowThicknessMm >= 1.0,
+
+            regionalDisease.involvedRegionalNodes == 0,
+            regionalDisease.clinicallyDetectedNode == false,
+            regionalDisease.inTransitMetastasis == false,
+            regionalDisease.satelliteMetastasis == false,
+            regionalDisease.microsatelliteMetastasis == false,
+
+            distantDisease.distantMetastasis == false,
+
+            clinicalContext.suspiciousRegionalNode == Boolean.FALSE,
+
+            clinicalContext.sentinelNodeBiopsyStatus ==
+                model.SentinelNodeBiopsyStatus.NOT_PERFORMED
+        )
+
+        $result : RecommendationResult()
+    then
+        $result.addRecommendation(
+            new ClinicalRecommendation(
+                "DIAG-03A",
+                "According to EADO guidelines, offer sentinel lymph node biopsy for accurate pathological staging and treatment decision-making in clinically node-negative invasive melanoma with Breslow thickness of at least 1.0 mm. Assess individual clinical suitability.",
+                80
+            )
+        );
+end
+
+
+
+rule "DIAG-03B - Offer SLNB for thin melanoma with additional risk factors"
+    salience 80
+    when
+        Patient(
+            primaryTumor.type == model.PrimaryTumorType.INVASIVE,
+
+            primaryTumor.breslowThicknessMm >= 0.8,
+            primaryTumor.breslowThicknessMm < 1.0,
+            primaryTumor.ulceration == true,
+
+            regionalDisease.involvedRegionalNodes == 0,
+            regionalDisease.clinicallyDetectedNode == false,
+            regionalDisease.inTransitMetastasis == false,
+            regionalDisease.satelliteMetastasis == false,
+            regionalDisease.microsatelliteMetastasis == false,
+
+            distantDisease.distantMetastasis == false,
+
+            clinicalContext.suspiciousRegionalNode == Boolean.FALSE,
+
+            clinicalContext.sentinelNodeBiopsyStatus ==
+                model.SentinelNodeBiopsyStatus.NOT_PERFORMED
+        )
+
+        $result : RecommendationResult()
+    then
+        $result.addRecommendation(
+            new ClinicalRecommendation(
+                "DIAG-03B",
+                "According to EADO guidelines, offer assessment for sentinel lymph node biopsy in clinically node-negative invasive melanoma with Breslow thickness between 0.8 and less than 1.0 mm and additional histopathological risk factors, including ulceration. Review individual clinical suitability and discuss benefits and risks.",
+                80
+            )
+        );
+end
+
+
+
+rule "GEN-03 - Multidisciplinary evaluation for advanced melanoma"
+    salience 85
+    when
+        MelanomaClassification(
+            stage in (
+                MelanomaStage.IIIA,
+                MelanomaStage.IIIB,
+                MelanomaStage.IIIC,
+                MelanomaStage.IIID,
+                MelanomaStage.IV
+            )
+        )
+
+        $result : RecommendationResult()
+    then
+        $result.addRecommendation(
+            new ClinicalRecommendation(
+                "GEN-03",
+                "For stage III or IV melanoma, consider multidisciplinary review to evaluate disease extent, resectability, molecular findings and appropriate management options according to current clinical guidelines and individual patient factors.",
+                85
+            )
+        );
+end
+
+
+rule "FOLLOW-01 - Review follow-up plan"
+    salience 70
+    when
+        Patient(
+            clinicalContext.diseaseStatus ==
+                model.DiseaseStatus.NO_EVIDENCE_OF_DISEASE
+        )
+
+        MelanomaClassification(
+            stage in (
+                MelanomaStage.IA,
+                MelanomaStage.IB,
+                MelanomaStage.IIA,
+                MelanomaStage.IIB,
+                MelanomaStage.IIC,
+                MelanomaStage.IIIA,
+                MelanomaStage.IIIB,
+                MelanomaStage.IIIC,
+                MelanomaStage.IIID,
+                MelanomaStage.IV
+            )
+        )
+
+        $result : RecommendationResult()
+    then
+        $result.addRecommendation(
+            new ClinicalRecommendation(
+                "FOLLOW-01",
+                "For a patient with a history of invasive melanoma and no current evidence of disease, review an individualized follow-up plan based on the original AJCC8 stage, recurrence risk, previous treatment and current clinical guidelines. Include skin and regional lymph node assessment, patient education and additional investigations when indicated.",
+                70
+            )
+        );
+end
+
+
+rule "DATA-02 - Verify missing ulceration status"
+    salience 90
+    when
+        Patient(
+            primaryTumor.type == model.PrimaryTumorType.INVASIVE,
+            primaryTumor.breslowThicknessMm != null,
+            primaryTumor.breslowThicknessMm >= 0.8,
+            primaryTumor.breslowThicknessMm < 1.0,
+            primaryTumor.getUlceration() == null,
+
+            regionalDisease.involvedRegionalNodes == 0,
+            regionalDisease.clinicallyDetectedNode == false,
+            regionalDisease.inTransitMetastasis == false,
+            regionalDisease.satelliteMetastasis == false,
+            regionalDisease.microsatelliteMetastasis == false,
+
+            distantDisease.distantMetastasis == false,
+
+            clinicalContext.suspiciousRegionalNode == Boolean.FALSE,
+
+            clinicalContext.sentinelNodeBiopsyStatus ==
+                model.SentinelNodeBiopsyStatus.NOT_PERFORMED
+        )
+
+        $result : RecommendationResult()
+    then
+        $result.addRecommendation(
+            new ClinicalRecommendation(
+                "DATA-02",
+                "Ulceration status is missing from the histopathology data. Verify the pathology report before determining the appropriate sentinel lymph node biopsy recommendation for this thin invasive melanoma.",
+                90
+            )
+        );
+end
+
+
+
+
+
+
+
+
+

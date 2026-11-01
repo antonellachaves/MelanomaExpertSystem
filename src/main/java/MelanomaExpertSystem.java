@@ -1,6 +1,7 @@
 
 import model.Patient;
 import model.MelanomaClassification;
+import model.RecommendationResult;
 
 import org.kie.api.KieServices;
 import org.kie.api.runtime.KieContainer;
@@ -15,66 +16,141 @@ public class MelanomaExpertSystem {
         kieContainer = kieServices.getKieClasspathContainer();
     }
 
-    public MelanomaClassification classify(Patient patient) {
+     public MelanomaClassification classify(Patient patient) {
 
-        if (patient == null) {
-            throw new IllegalArgumentException(
-                    "Patient cannot be null"
-            );
-        }
+         if (patient == null) {
+             throw new IllegalArgumentException(
+                     "Patient cannot be null"
+             );
+         }
 
-        if (patient.getPrimaryTumor() == null ||
-                patient.getRegionalDisease() == null ||
-                patient.getDistantDisease() == null) {
+         if (patient.getPrimaryTumor() == null ||
+                 patient.getRegionalDisease() == null ||
+                 patient.getDistantDisease() == null) {
 
-            throw new IllegalArgumentException(
-                    "Incomplete clinical data for patient "
-                            + patient.getPatientId()
-            );
-        }
+             throw new IllegalArgumentException(
+                     "Incomplete clinical data for patient "
+                             + patient.getPatientId()
+             );
+         }
 
-        // Create a NEW classification for this evaluation
-        MelanomaClassification classification =
-                new MelanomaClassification(
-                        patient.getPatientId()
-                );
+         // Create a NEW classification for this evaluation
+         MelanomaClassification classification =
+                 new MelanomaClassification(
+                         patient.getPatientId()
+                 );
 
-        // Create a NEW Drools session
-        KieSession kieSession =
-                kieContainer.newKieSession();
+         // Create a NEW Drools session
+         KieSession kieSession =
+                 kieContainer.newKieSession();
 
-        //Cada llamada a classify() comienza con una clasificación vacía y una sesión nueva. Así evitamos que queden resultados anteriores dentro de la sesión de reglas.
+         //Cada llamada a classify() comienza con una clasificación vacía y una sesión nueva. Así evitamos que queden resultados anteriores dentro de la sesión de reglas.
 
-        try {
+         try {
 
-            kieSession.insert(patient);
-            kieSession.insert(classification);
+             kieSession.insert(patient);
+             kieSession.insert(classification);
 
-            int firedRules = kieSession.fireAllRules();
+             int firedRules = kieSession.fireAllRules();
 
-            System.out.println(
-                    "Patient " + patient.getPatientId()
-                            + " -> Rules fired: " + firedRules
-            );
+             System.out.println(
+                     "Patient " + patient.getPatientId()
+                             + " -> Rules fired: " + firedRules
+             );
 
-            if (classification.getTCategory() == null ||
-                    classification.getNCategory() == null ||
-                    classification.getMCategory() == null ||
-                    classification.getStage() == null) {
 
-                throw new IllegalStateException(
-                        "Incomplete classification for patient "
-                                + patient.getPatientId()
-                );
-            }
+             if (classification.getTCategory() == null ||
+                     classification.getNCategory() == null ||
+                     classification.getMCategory() == null ||
+                     classification.getStage() == null) {
 
-            return classification;
+                 throw new IllegalStateException(
+                         "Cannot complete TNM classification for patient "
+                                 + patient.getPatientId()
+                                 + ". Required clinical information is missing."
+                 );
+             }
 
-        } finally {
 
-            // Always close the session
-            kieSession.dispose();
-        }
-    }
-}
+
+             boolean complete =
+                     classification.getTCategory() != null &&
+                             classification.getNCategory() != null &&
+                             classification.getMCategory() != null &&
+                             classification.getStage() != null;
+
+             if (complete) {
+                 classification.lock();
+                 patient.lock();
+             }
+
+             return classification;
+
+
+
+         } finally {
+
+             // Always close the session
+             kieSession.dispose();
+         }
+     }
+
+
+
+     public RecommendationResult generateRecommendations(
+             Patient patient,
+             MelanomaClassification classification) {
+         if (patient == null) {
+             throw new IllegalArgumentException(
+                     "Patient cannot be null"
+             );
+         }
+
+         if (classification == null) {
+             throw new IllegalArgumentException(
+                     "Classification cannot be null"
+             );
+         }
+
+         if (classification.getStage() == null) {
+             throw new IllegalArgumentException(
+                     "Patient must be classified before generating recommendations"
+             );
+         }
+
+         if (classification.getPatientId() != patient.getPatientId()) {
+             throw new IllegalArgumentException(
+                     "Classification does not belong to this patient"
+             );
+         }
+
+
+         RecommendationResult result = new RecommendationResult();
+
+         KieSession kieSession = kieContainer.newKieSession();
+
+
+         try {
+             kieSession.insert(patient);
+             kieSession.insert(classification);
+             kieSession.insert(result);
+
+             int firedRules = kieSession.fireAllRules();
+
+             System.out.println(
+                     "Patient " + patient.getPatientId()
+                             + " -> Recommendation rules fired: "
+                             + firedRules
+             );
+
+             return result;
+
+         } finally {
+             kieSession.dispose();
+         }
+     }
+
+
+
+ }
 

@@ -372,3 +372,71 @@ then
 
     System.out.println("Patient " + $id + " -> S_R15 -> Stage IV");
 end
+
+
+ // S_R16: TIS + N0 + M0 -> Stage 0
+rule "S_R16 - Stage 0"
+salience 7000
+when
+    $patient : Patient($id : patientId)
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        tCategory == TCategory.TIS,
+        nCategory == NCategory.N0,
+        mCategory == MCategory.M0,
+        stage == null
+    )
+then
+    $classification.setStage(MelanomaStage.ZERO);
+    update($classification);
+
+    System.out.println("Patient " + $id + " -> S_R16 -> Stage 0");
+end
+
+
+// S_R17: T0 + N1B/N1C + M0 -> Stage IIIB
+rule "S_R17 - Stage IIIB T0"
+salience 7000
+when
+    $patient : Patient($id : patientId)
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        tCategory == TCategory.T0,
+        (nCategory == NCategory.N1B ||
+         nCategory == NCategory.N1C),
+        mCategory == MCategory.M0,
+        stage == null
+    )
+then
+    $classification.setStage(MelanomaStage.IIIB);
+    update($classification);
+
+    System.out.println("Patient " + $id + " -> S_R17 -> Stage IIIB");
+end
+
+
+// S_R18: T0 + N2B/N2C/N3B/N3C + M0 -> Stage IIIC
+rule "S_R18 - Stage IIIC T0"
+salience 7000
+when
+    $patient : Patient($id : patientId)
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        tCategory == TCategory.T0,
+        (nCategory == NCategory.N2B ||
+         nCategory == NCategory.N2C ||
+         nCategory == NCategory.N3B ||
+         nCategory == NCategory.N3C),
+        mCategory == MCategory.M0,
+        stage == null
+    )
+then
+    $classification.setStage(MelanomaStage.IIIC);
+    update($classification);
+
+    System.out.println("Patient " + $id + " -> S_R18 -> Stage IIIC");
+end
+
