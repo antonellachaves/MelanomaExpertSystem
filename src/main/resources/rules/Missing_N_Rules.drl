@@ -1,0 +1,164 @@
+
+package rules
+
+import model.Patient;
+import model.MelanomaClassification;
+import model.MissingClinicalData;
+
+// N_M01: Missing regional lymph node count
+rule "N_M01 - Missing regional node count"
+salience 8500
+when
+    $patient : Patient(
+        $id : patientId,
+        $regional : regionalDisease
+    )
+
+    eval($regional != null &&
+         $regional.getInvolvedRegionalNodes() == null)
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        nCategory == null
+    )
+
+    not MissingClinicalData(
+        patientId == $id,
+        category == "N",
+        field == "involvedRegionalNodes"
+    )
+then
+    insert(new MissingClinicalData(
+        $id,
+        "N",
+        "involvedRegionalNodes",
+        "The number of involved regional lymph nodes is required to determine N."
+    ));
+end
+
+// N_M02: Missing regional disease information
+rule "N_M02 - Missing regional disease"
+salience 8500
+when
+    $patient : Patient(
+        $id : patientId,
+        regionalDisease == null
+    )
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        nCategory == null
+    )
+
+    not MissingClinicalData(
+        patientId == $id,
+        category == "N",
+        field == "regionalDisease"
+    )
+then
+    insert(new MissingClinicalData(
+        $id,
+        "N",
+        "regionalDisease",
+        "Regional disease information is missing."
+    ));
+end
+
+// N_M03: Missing clinical detection status
+rule "N_M03 - Missing clinical detection status"
+salience 8500
+when
+    $patient : Patient(
+        $id : patientId,
+        $regional : regionalDisease
+    )
+
+    eval($regional != null &&
+         $regional.getInvolvedRegionalNodes() != null &&
+         $regional.getInvolvedRegionalNodes() > 0 &&
+         $regional.getClinicallyDetectedNode() == null &&
+         Boolean.FALSE.equals(
+             $regional.hasLocoregionalMetastasis()) &&
+         Boolean.FALSE.equals(
+             $regional.getMattedNodes()))
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        nCategory == null
+    )
+
+    not MissingClinicalData(
+        patientId == $id,
+        category == "N",
+        field == "clinicallyDetectedNode"
+    )
+then
+    insert(new MissingClinicalData(
+        $id,
+        "N",
+        "clinicallyDetectedNode",
+        "Clinical detection status is needed to distinguish N subcategories."
+    ));
+end
+
+// N_M04: Missing locoregional metastasis status
+rule "N_M04 - Missing locoregional metastasis status"
+salience 8500
+when
+    $patient : Patient(
+        $id : patientId,
+        $regional : regionalDisease
+    )
+
+    eval($regional != null &&
+         $regional.hasLocoregionalMetastasis() == null)
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        nCategory == null
+    )
+
+    not MissingClinicalData(
+        patientId == $id,
+        category == "N",
+        field == "locoregionalMetastasis"
+    )
+then
+    insert(new MissingClinicalData(
+        $id,
+        "N",
+        "locoregionalMetastasis",
+        "Locoregional metastasis status is needed to determine N."
+    ));
+end
+
+// N_M05: Missing matted nodes status
+rule "N_M05 - Missing matted nodes status"
+salience 8500
+when
+    $patient : Patient(
+        $id : patientId,
+        $regional : regionalDisease
+    )
+
+    eval($regional != null &&
+         $regional.getMattedNodes() == null)
+
+    $classification : MelanomaClassification(
+        patientId == $id,
+        nCategory == null
+    )
+
+    not MissingClinicalData(
+        patientId == $id,
+        category == "N",
+        field == "mattedNodes"
+    )
+then
+    insert(new MissingClinicalData(
+        $id,
+        "N",
+        "mattedNodes",
+        "Matted lymph node status is needed to determine N."
+    ));
+end

@@ -1,0 +1,86 @@
+
+package rules
+
+import model.Patient;
+import model.PrimaryTumorType;
+import model.MissingClinicalData;
+
+// T_M01: Primary tumor information is missing
+rule "T_M01 - Missing primary tumor"
+salience 9500
+when
+    $patient : Patient(
+        $id : patientId,
+        primaryTumor == null
+    )
+
+    not MissingClinicalData(
+        patientId == $id,
+        category == "T",
+        field == "primaryTumor"
+    )
+then
+    insert(new MissingClinicalData(
+        $id,
+        "T",
+        "primaryTumor",
+        "Primary tumor information is missing."
+    ));
+end
+
+// T_M02: Invasive tumor with missing Breslow thickness
+rule "T_M02 - Missing Breslow"
+salience 9500
+when
+    $patient : Patient(
+        $id : patientId,
+        $tumor : primaryTumor
+    )
+
+    eval($tumor != null
+        && $tumor.getType() == PrimaryTumorType.INVASIVE
+        && $tumor.getBreslowThicknessMm() == null)
+
+    not MissingClinicalData(
+        patientId == $id,
+        category == "T",
+        field == "breslowThicknessMm"
+    )
+then
+    insert(new MissingClinicalData(
+        $id,
+        "T",
+        "breslowThicknessMm",
+        "Breslow thickness is required to determine T category."
+    ));
+end
+
+// T_M03: Ulceration missing when needed for T classification
+rule "T_M03 - Missing ulceration"
+salience 9500
+when
+    $patient : Patient(
+        $id : patientId,
+        $tumor : primaryTumor
+    )
+
+    eval($tumor != null
+        && $tumor.getType() == PrimaryTumorType.INVASIVE
+        && $tumor.getBreslowThicknessMm() != null
+        && ($tumor.getBreslowThicknessMm() < 0.8
+            || $tumor.getBreslowThicknessMm() > 1.0)
+        && $tumor.getUlceration() == null)
+
+    not MissingClinicalData(
+        patientId == $id,
+        category == "T",
+        field == "ulceration"
+    )
+then
+    insert(new MissingClinicalData(
+        $id,
+        "T",
+        "ulceration",
+        "Ulceration status is required to determine T category."
+    ));
+end

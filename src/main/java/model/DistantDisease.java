@@ -1,37 +1,43 @@
+
 package model;
 
 public class DistantDisease {
 
-    private boolean distantMetastasis;
-    private boolean distantSkinSoftTissueNonregionalNode;
-    private boolean lungMetastasis;
-    private boolean nonCnsVisceralMetastasis;
-    private boolean cnsMetastasis;
-    private LdhStatus ldhStatus;
+    private final Boolean distantMetastasis;
+    private final Boolean distantSkinSoftTissueNonregionalNode;
+    private final Boolean lungMetastasis;
+    private final Boolean nonCnsVisceralMetastasis;
+    private final Boolean cnsMetastasis;
+    private final LdhStatus ldhStatus;
 
-    public DistantDisease() {
-    }
+    public DistantDisease(
+            Boolean distantMetastasis,
+            Boolean distantSkinSoftTissueNonregionalNode,
+            Boolean lungMetastasis,
+            Boolean nonCnsVisceralMetastasis,
+            Boolean cnsMetastasis,
+            LdhStatus ldhStatus) {
 
-    public DistantDisease(boolean distantMetastasis,
-                          boolean distantSkinSoftTissueNonregionalNode,
-                          boolean lungMetastasis,
-                          boolean nonCnsVisceralMetastasis,
-                          boolean cnsMetastasis,
-                          LdhStatus ldhStatus) {
-
-
-        if (!distantMetastasis &&
-                (distantSkinSoftTissueNonregionalNode ||
-                        lungMetastasis ||
-                        nonCnsVisceralMetastasis ||
-                        cnsMetastasis)) {
+        if (Boolean.FALSE.equals(distantMetastasis)
+                && (Boolean.TRUE.equals(distantSkinSoftTissueNonregionalNode)
+                || Boolean.TRUE.equals(lungMetastasis)
+                || Boolean.TRUE.equals(nonCnsVisceralMetastasis)
+                || Boolean.TRUE.equals(cnsMetastasis))) {
 
             throw new IllegalArgumentException(
-                    "Inconsistent distant disease data: " +
-                            "a metastatic site is present but distantMetastasis is false."
-            );
+                    "Contradictory data: metastatic site present but distant metastasis is false.");
         }
 
+        if (Boolean.TRUE.equals(distantSkinSoftTissueNonregionalNode)
+                || Boolean.TRUE.equals(lungMetastasis)
+                || Boolean.TRUE.equals(nonCnsVisceralMetastasis)
+                || Boolean.TRUE.equals(cnsMetastasis)) {
+
+            if (distantMetastasis == null) {
+                throw new IllegalArgumentException(
+                        "Distant metastasis status must be confirmed when a metastatic site is present.");
+            }
+        }
 
         this.distantMetastasis = distantMetastasis;
         this.distantSkinSoftTissueNonregionalNode =
@@ -42,54 +48,27 @@ public class DistantDisease {
         this.ldhStatus = ldhStatus;
     }
 
-    public boolean isDistantMetastasis() {
+    public Boolean getDistantMetastasis() {
         return distantMetastasis;
     }
 
-    public void setDistantMetastasis(boolean distantMetastasis) {
-        this.distantMetastasis = distantMetastasis;
-    }
-
-    public boolean isDistantSkinSoftTissueNonregionalNode() {
+    public Boolean getDistantSkinSoftTissueNonregionalNode() {
         return distantSkinSoftTissueNonregionalNode;
     }
 
-    public void setDistantSkinSoftTissueNonregionalNode(
-            boolean distantSkinSoftTissueNonregionalNode) {
-        this.distantSkinSoftTissueNonregionalNode =
-                distantSkinSoftTissueNonregionalNode;
-    }
-
-    public boolean isLungMetastasis() {
+    public Boolean getLungMetastasis() {
         return lungMetastasis;
     }
 
-    public void setLungMetastasis(boolean lungMetastasis) {
-        this.lungMetastasis = lungMetastasis;
-    }
-
-    public boolean isNonCnsVisceralMetastasis() {
+    public Boolean getNonCnsVisceralMetastasis() {
         return nonCnsVisceralMetastasis;
     }
 
-    public void setNonCnsVisceralMetastasis(
-            boolean nonCnsVisceralMetastasis) {
-        this.nonCnsVisceralMetastasis = nonCnsVisceralMetastasis;
-    }
-
-    public boolean isCnsMetastasis() {
+    public Boolean getCnsMetastasis() {
         return cnsMetastasis;
-    }
-
-    public void setCnsMetastasis(boolean cnsMetastasis) {
-        this.cnsMetastasis = cnsMetastasis;
     }
 
     public LdhStatus getLdhStatus() {
         return ldhStatus;
-    }
-
-    public void setLdhStatus(LdhStatus ldhStatus) {
-        this.ldhStatus = ldhStatus;
     }
 }

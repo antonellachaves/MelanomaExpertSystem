@@ -351,17 +351,18 @@ then
 end
 
 
+
 // S_R15: Any M1 category -> Stage IV
-// T, N and M must all be available first.
+// T and N may remain unknown.
 rule "S_R15 - Stage IV"
 salience 7000
 when
-    $patient : Patient($id : patientId)
+    $patient : Patient(
+        $id : patientId
+    )
 
     $classification : MelanomaClassification(
         patientId == $id,
-        tCategory != null,
-        nCategory != null,
         mCategory != null,
         mCategory != MCategory.M0,
         stage == null
@@ -370,8 +371,11 @@ then
     $classification.setStage(MelanomaStage.IV);
     update($classification);
 
-    System.out.println("Patient " + $id + " -> S_R15 -> Stage IV");
+    System.out.println(
+        "Patient " + $id + " -> S_R15 -> Stage IV"
+    );
 end
+
 
 
  // S_R16: TIS + N0 + M0 -> Stage 0

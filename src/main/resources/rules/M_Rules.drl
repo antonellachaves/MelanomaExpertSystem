@@ -2,11 +2,9 @@
 package rules
 
 import model.Patient;
-import model.DistantDisease;
 import model.MelanomaClassification;
 import model.MCategory;
 import model.LdhStatus;
-
 
 // M_R01: No distant metastasis -> M0
 rule "M_R01 - M0"
@@ -17,25 +15,21 @@ when
         $distant : distantDisease
     )
 
-    eval($distant != null &&
-         !$distant.isDistantMetastasis() &&
-         !$distant.isDistantSkinSoftTissueNonregionalNode() &&
-         !$distant.isLungMetastasis() &&
-         !$distant.isNonCnsVisceralMetastasis() &&
-         !$distant.isCnsMetastasis())
+    eval($distant != null
+        && Boolean.FALSE.equals($distant.getDistantMetastasis())
+        && !Boolean.TRUE.equals($distant.getDistantSkinSoftTissueNonregionalNode())
+        && !Boolean.TRUE.equals($distant.getLungMetastasis())
+        && !Boolean.TRUE.equals($distant.getNonCnsVisceralMetastasis())
+        && !Boolean.TRUE.equals($distant.getCnsMetastasis()))
 
     $classification : MelanomaClassification(
         patientId == $id,
-        nCategory != null,
         mCategory == null
     )
 then
     $classification.setMCategory(MCategory.M0);
     update($classification);
-
-    System.out.println("Patient " + $id + " -> M_R01 -> M0");
 end
-
 
 // M_R02: M1A - LDH not recorded
 rule "M_R02 - M1A"
@@ -46,26 +40,22 @@ when
         $distant : distantDisease
     )
 
-    eval($distant != null &&
-         $distant.isDistantMetastasis() &&
-         $distant.isDistantSkinSoftTissueNonregionalNode() &&
-         !$distant.isLungMetastasis() &&
-         !$distant.isNonCnsVisceralMetastasis() &&
-         !$distant.isCnsMetastasis() &&
-         $distant.getLdhStatus() == LdhStatus.NOT_RECORDED)
+    eval($distant != null
+        && Boolean.TRUE.equals($distant.getDistantMetastasis())
+        && Boolean.TRUE.equals($distant.getDistantSkinSoftTissueNonregionalNode())
+        && Boolean.FALSE.equals($distant.getLungMetastasis())
+        && Boolean.FALSE.equals($distant.getNonCnsVisceralMetastasis())
+        && Boolean.FALSE.equals($distant.getCnsMetastasis())
+        && $distant.getLdhStatus() == LdhStatus.NOT_RECORDED)
 
     $classification : MelanomaClassification(
         patientId == $id,
-        nCategory != null,
         mCategory == null
     )
 then
     $classification.setMCategory(MCategory.M1A);
     update($classification);
-
-    System.out.println("Patient " + $id + " -> M_R02 -> M1A");
 end
-
 
 // M_R03: M1A(0) - LDH not elevated
 rule "M_R03 - M1A(0)"
@@ -76,26 +66,22 @@ when
         $distant : distantDisease
     )
 
-    eval($distant != null &&
-         $distant.isDistantMetastasis() &&
-         $distant.isDistantSkinSoftTissueNonregionalNode() &&
-         !$distant.isLungMetastasis() &&
-         !$distant.isNonCnsVisceralMetastasis() &&
-         !$distant.isCnsMetastasis() &&
-         $distant.getLdhStatus() == LdhStatus.NOT_ELEVATED)
+    eval($distant != null
+        && Boolean.TRUE.equals($distant.getDistantMetastasis())
+        && Boolean.TRUE.equals($distant.getDistantSkinSoftTissueNonregionalNode())
+        && Boolean.FALSE.equals($distant.getLungMetastasis())
+        && Boolean.FALSE.equals($distant.getNonCnsVisceralMetastasis())
+        && Boolean.FALSE.equals($distant.getCnsMetastasis())
+        && $distant.getLdhStatus() == LdhStatus.NOT_ELEVATED)
 
     $classification : MelanomaClassification(
         patientId == $id,
-        nCategory != null,
         mCategory == null
     )
 then
     $classification.setMCategory(MCategory.M1A_0);
     update($classification);
-
-    System.out.println("Patient " + $id + " -> M_R03 -> M1A(0)");
 end
-
 
 // M_R04: M1A(1) - LDH elevated
 rule "M_R04 - M1A(1)"
@@ -106,26 +92,22 @@ when
         $distant : distantDisease
     )
 
-    eval($distant != null &&
-         $distant.isDistantMetastasis() &&
-         $distant.isDistantSkinSoftTissueNonregionalNode() &&
-         !$distant.isLungMetastasis() &&
-         !$distant.isNonCnsVisceralMetastasis() &&
-         !$distant.isCnsMetastasis() &&
-         $distant.getLdhStatus() == LdhStatus.ELEVATED)
+    eval($distant != null
+        && Boolean.TRUE.equals($distant.getDistantMetastasis())
+        && Boolean.TRUE.equals($distant.getDistantSkinSoftTissueNonregionalNode())
+        && Boolean.FALSE.equals($distant.getLungMetastasis())
+        && Boolean.FALSE.equals($distant.getNonCnsVisceralMetastasis())
+        && Boolean.FALSE.equals($distant.getCnsMetastasis())
+        && $distant.getLdhStatus() == LdhStatus.ELEVATED)
 
     $classification : MelanomaClassification(
         patientId == $id,
-        nCategory != null,
         mCategory == null
     )
 then
     $classification.setMCategory(MCategory.M1A_1);
     update($classification);
-
-    System.out.println("Patient " + $id + " -> M_R04 -> M1A(1)");
 end
-
 
 // M_R05: M1B - LDH not recorded
 rule "M_R05 - M1B"
@@ -136,25 +118,21 @@ when
         $distant : distantDisease
     )
 
-    eval($distant != null &&
-         $distant.isDistantMetastasis() &&
-         $distant.isLungMetastasis() &&
-         !$distant.isNonCnsVisceralMetastasis() &&
-         !$distant.isCnsMetastasis() &&
-         $distant.getLdhStatus() == LdhStatus.NOT_RECORDED)
+    eval($distant != null
+        && Boolean.TRUE.equals($distant.getDistantMetastasis())
+        && Boolean.TRUE.equals($distant.getLungMetastasis())
+        && Boolean.FALSE.equals($distant.getNonCnsVisceralMetastasis())
+        && Boolean.FALSE.equals($distant.getCnsMetastasis())
+        && $distant.getLdhStatus() == LdhStatus.NOT_RECORDED)
 
     $classification : MelanomaClassification(
         patientId == $id,
-        nCategory != null,
         mCategory == null
     )
 then
     $classification.setMCategory(MCategory.M1B);
     update($classification);
-
-    System.out.println("Patient " + $id + " -> M_R05 -> M1B");
 end
-
 
 // M_R06: M1B(0) - LDH not elevated
 rule "M_R06 - M1B(0)"
@@ -165,25 +143,21 @@ when
         $distant : distantDisease
     )
 
-    eval($distant != null &&
-         $distant.isDistantMetastasis() &&
-         $distant.isLungMetastasis() &&
-         !$distant.isNonCnsVisceralMetastasis() &&
-         !$distant.isCnsMetastasis() &&
-         $distant.getLdhStatus() == LdhStatus.NOT_ELEVATED)
+    eval($distant != null
+        && Boolean.TRUE.equals($distant.getDistantMetastasis())
+        && Boolean.TRUE.equals($distant.getLungMetastasis())
+        && Boolean.FALSE.equals($distant.getNonCnsVisceralMetastasis())
+        && Boolean.FALSE.equals($distant.getCnsMetastasis())
+        && $distant.getLdhStatus() == LdhStatus.NOT_ELEVATED)
 
     $classification : MelanomaClassification(
         patientId == $id,
-        nCategory != null,
         mCategory == null
     )
 then
     $classification.setMCategory(MCategory.M1B_0);
     update($classification);
-
-    System.out.println("Patient " + $id + " -> M_R06 -> M1B(0)");
 end
-
 
 // M_R07: M1B(1) - LDH elevated
 rule "M_R07 - M1B(1)"
@@ -194,25 +168,21 @@ when
         $distant : distantDisease
     )
 
-    eval($distant != null &&
-         $distant.isDistantMetastasis() &&
-         $distant.isLungMetastasis() &&
-         !$distant.isNonCnsVisceralMetastasis() &&
-         !$distant.isCnsMetastasis() &&
-         $distant.getLdhStatus() == LdhStatus.ELEVATED)
+    eval($distant != null
+        && Boolean.TRUE.equals($distant.getDistantMetastasis())
+        && Boolean.TRUE.equals($distant.getLungMetastasis())
+        && Boolean.FALSE.equals($distant.getNonCnsVisceralMetastasis())
+        && Boolean.FALSE.equals($distant.getCnsMetastasis())
+        && $distant.getLdhStatus() == LdhStatus.ELEVATED)
 
     $classification : MelanomaClassification(
         patientId == $id,
-        nCategory != null,
         mCategory == null
     )
 then
     $classification.setMCategory(MCategory.M1B_1);
     update($classification);
-
-    System.out.println("Patient " + $id + " -> M_R07 -> M1B(1)");
 end
-
 
 // M_R08: M1C - LDH not recorded
 rule "M_R08 - M1C"
@@ -223,24 +193,20 @@ when
         $distant : distantDisease
     )
 
-    eval($distant != null &&
-         $distant.isDistantMetastasis() &&
-         $distant.isNonCnsVisceralMetastasis() &&
-         !$distant.isCnsMetastasis() &&
-         $distant.getLdhStatus() == LdhStatus.NOT_RECORDED)
+    eval($distant != null
+        && Boolean.TRUE.equals($distant.getDistantMetastasis())
+        && Boolean.TRUE.equals($distant.getNonCnsVisceralMetastasis())
+        && Boolean.FALSE.equals($distant.getCnsMetastasis())
+        && $distant.getLdhStatus() == LdhStatus.NOT_RECORDED)
 
     $classification : MelanomaClassification(
         patientId == $id,
-        nCategory != null,
         mCategory == null
     )
 then
     $classification.setMCategory(MCategory.M1C);
     update($classification);
-
-    System.out.println("Patient " + $id + " -> M_R08 -> M1C");
 end
-
 
 // M_R09: M1C(0) - LDH not elevated
 rule "M_R09 - M1C(0)"
@@ -251,24 +217,20 @@ when
         $distant : distantDisease
     )
 
-    eval($distant != null &&
-         $distant.isDistantMetastasis() &&
-         $distant.isNonCnsVisceralMetastasis() &&
-         !$distant.isCnsMetastasis() &&
-         $distant.getLdhStatus() == LdhStatus.NOT_ELEVATED)
+    eval($distant != null
+        && Boolean.TRUE.equals($distant.getDistantMetastasis())
+        && Boolean.TRUE.equals($distant.getNonCnsVisceralMetastasis())
+        && Boolean.FALSE.equals($distant.getCnsMetastasis())
+        && $distant.getLdhStatus() == LdhStatus.NOT_ELEVATED)
 
     $classification : MelanomaClassification(
         patientId == $id,
-        nCategory != null,
         mCategory == null
     )
 then
     $classification.setMCategory(MCategory.M1C_0);
     update($classification);
-
-    System.out.println("Patient " + $id + " -> M_R09 -> M1C(0)");
 end
-
 
 // M_R10: M1C(1) - LDH elevated
 rule "M_R10 - M1C(1)"
@@ -279,24 +241,20 @@ when
         $distant : distantDisease
     )
 
-    eval($distant != null &&
-         $distant.isDistantMetastasis() &&
-         $distant.isNonCnsVisceralMetastasis() &&
-         !$distant.isCnsMetastasis() &&
-         $distant.getLdhStatus() == LdhStatus.ELEVATED)
+    eval($distant != null
+        && Boolean.TRUE.equals($distant.getDistantMetastasis())
+        && Boolean.TRUE.equals($distant.getNonCnsVisceralMetastasis())
+        && Boolean.FALSE.equals($distant.getCnsMetastasis())
+        && $distant.getLdhStatus() == LdhStatus.ELEVATED)
 
     $classification : MelanomaClassification(
         patientId == $id,
-        nCategory != null,
         mCategory == null
     )
 then
     $classification.setMCategory(MCategory.M1C_1);
     update($classification);
-
-    System.out.println("Patient " + $id + " -> M_R10 -> M1C(1)");
 end
-
 
 // M_R11: M1D - LDH not recorded
 rule "M_R11 - M1D"
@@ -307,23 +265,19 @@ when
         $distant : distantDisease
     )
 
-    eval($distant != null &&
-         $distant.isDistantMetastasis() &&
-         $distant.isCnsMetastasis() &&
-         $distant.getLdhStatus() == LdhStatus.NOT_RECORDED)
+    eval($distant != null
+        && Boolean.TRUE.equals($distant.getDistantMetastasis())
+        && Boolean.TRUE.equals($distant.getCnsMetastasis())
+        && $distant.getLdhStatus() == LdhStatus.NOT_RECORDED)
 
     $classification : MelanomaClassification(
         patientId == $id,
-        nCategory != null,
         mCategory == null
     )
 then
     $classification.setMCategory(MCategory.M1D);
     update($classification);
-
-    System.out.println("Patient " + $id + " -> M_R11 -> M1D");
 end
-
 
 // M_R12: M1D(0) - LDH not elevated
 rule "M_R12 - M1D(0)"
@@ -334,23 +288,19 @@ when
         $distant : distantDisease
     )
 
-    eval($distant != null &&
-         $distant.isDistantMetastasis() &&
-         $distant.isCnsMetastasis() &&
-         $distant.getLdhStatus() == LdhStatus.NOT_ELEVATED)
+    eval($distant != null
+        && Boolean.TRUE.equals($distant.getDistantMetastasis())
+        && Boolean.TRUE.equals($distant.getCnsMetastasis())
+        && $distant.getLdhStatus() == LdhStatus.NOT_ELEVATED)
 
     $classification : MelanomaClassification(
         patientId == $id,
-        nCategory != null,
         mCategory == null
     )
 then
     $classification.setMCategory(MCategory.M1D_0);
     update($classification);
-
-    System.out.println("Patient " + $id + " -> M_R12 -> M1D(0)");
 end
-
 
 // M_R13: M1D(1) - LDH elevated
 rule "M_R13 - M1D(1)"
@@ -361,20 +311,16 @@ when
         $distant : distantDisease
     )
 
-    eval($distant != null &&
-         $distant.isDistantMetastasis() &&
-         $distant.isCnsMetastasis() &&
-         $distant.getLdhStatus() == LdhStatus.ELEVATED)
+    eval($distant != null
+        && Boolean.TRUE.equals($distant.getDistantMetastasis())
+        && Boolean.TRUE.equals($distant.getCnsMetastasis())
+        && $distant.getLdhStatus() == LdhStatus.ELEVATED)
 
     $classification : MelanomaClassification(
         patientId == $id,
-        nCategory != null,
         mCategory == null
     )
 then
     $classification.setMCategory(MCategory.M1D_1);
     update($classification);
-
-    System.out.println("Patient " + $id + " -> M_R13 -> M1D(1)");
 end
-

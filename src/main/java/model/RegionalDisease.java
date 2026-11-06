@@ -1,25 +1,28 @@
+
 package model;
 
 public class RegionalDisease {
 
-    private int involvedRegionalNodes;
-    private boolean clinicallyDetectedNode;
-    private boolean inTransitMetastasis;
-    private boolean satelliteMetastasis;
-    private boolean microsatelliteMetastasis;
-    private boolean mattedNodes;
+    private Integer involvedRegionalNodes;
+    private Boolean clinicallyDetectedNode;
+    private Boolean inTransitMetastasis;
+    private Boolean satelliteMetastasis;
+    private Boolean microsatelliteMetastasis;
+    private Boolean mattedNodes;
 
     public RegionalDisease() {
+        // Los campos permanecen en null si no se introducen.
     }
 
-    public RegionalDisease(int involvedRegionalNodes,
-                           boolean clinicallyDetectedNode,
-                           boolean inTransitMetastasis,
-                           boolean satelliteMetastasis,
-                           boolean microsatelliteMetastasis,
-                           boolean mattedNodes) {
+    public RegionalDisease(
+            Integer involvedRegionalNodes,
+            Boolean clinicallyDetectedNode,
+            Boolean inTransitMetastasis,
+            Boolean satelliteMetastasis,
+            Boolean microsatelliteMetastasis,
+            Boolean mattedNodes) {
 
-        this.involvedRegionalNodes = involvedRegionalNodes;
+        setInvolvedRegionalNodes(involvedRegionalNodes);
         this.clinicallyDetectedNode = clinicallyDetectedNode;
         this.inTransitMetastasis = inTransitMetastasis;
         this.satelliteMetastasis = satelliteMetastasis;
@@ -27,57 +30,71 @@ public class RegionalDisease {
         this.mattedNodes = mattedNodes;
     }
 
-    public int getInvolvedRegionalNodes() {
+    public Integer getInvolvedRegionalNodes() {
         return involvedRegionalNodes;
     }
 
-    public void setInvolvedRegionalNodes(int involvedRegionalNodes) {
-        this.involvedRegionalNodes = involvedRegionalNodes;
+    public void setInvolvedRegionalNodes(Integer nodes) {
+        if (nodes != null && nodes < 0) {
+            throw new IllegalArgumentException(
+                    "Number of involved regional nodes cannot be negative.");
+        }
+        this.involvedRegionalNodes = nodes;
     }
 
-    public boolean isClinicallyDetectedNode() {
+    public Boolean getClinicallyDetectedNode() {
         return clinicallyDetectedNode;
     }
 
-    public void setClinicallyDetectedNode(boolean clinicallyDetectedNode) {
-        this.clinicallyDetectedNode = clinicallyDetectedNode;
+    public void setClinicallyDetectedNode(Boolean value) {
+        this.clinicallyDetectedNode = value;
     }
 
-    public boolean isInTransitMetastasis() {
+    public Boolean getInTransitMetastasis() {
         return inTransitMetastasis;
     }
 
-    public void setInTransitMetastasis(boolean inTransitMetastasis) {
-        this.inTransitMetastasis = inTransitMetastasis;
+    public void setInTransitMetastasis(Boolean value) {
+        this.inTransitMetastasis = value;
     }
 
-    public boolean isSatelliteMetastasis() {
+    public Boolean getSatelliteMetastasis() {
         return satelliteMetastasis;
     }
 
-    public void setSatelliteMetastasis(boolean satelliteMetastasis) {
-        this.satelliteMetastasis = satelliteMetastasis;
+    public void setSatelliteMetastasis(Boolean value) {
+        this.satelliteMetastasis = value;
     }
 
-    public boolean isMicrosatelliteMetastasis() {
+    public Boolean getMicrosatelliteMetastasis() {
         return microsatelliteMetastasis;
     }
 
-    public void setMicrosatelliteMetastasis(boolean microsatelliteMetastasis) {
-        this.microsatelliteMetastasis = microsatelliteMetastasis;
+    public void setMicrosatelliteMetastasis(Boolean value) {
+        this.microsatelliteMetastasis = value;
     }
 
-    public boolean isMattedNodes() {
+    public Boolean getMattedNodes() {
         return mattedNodes;
     }
 
-    public void setMattedNodes(boolean mattedNodes) {
-        this.mattedNodes = mattedNodes;
+    public void setMattedNodes(Boolean value) {
+        this.mattedNodes = value;
     }
 
-    public boolean hasLocoregionalMetastasis() {
-        return inTransitMetastasis
-                || satelliteMetastasis
-                || microsatelliteMetastasis;
+    public Boolean hasLocoregionalMetastasis() {
+        if (Boolean.TRUE.equals(inTransitMetastasis)
+                || Boolean.TRUE.equals(satelliteMetastasis)
+                || Boolean.TRUE.equals(microsatelliteMetastasis)) {
+            return true;
+        }
+
+        if (Boolean.FALSE.equals(inTransitMetastasis)
+                && Boolean.FALSE.equals(satelliteMetastasis)
+                && Boolean.FALSE.equals(microsatelliteMetastasis)) {
+            return false;
+        }
+
+        return null;
     }
 }

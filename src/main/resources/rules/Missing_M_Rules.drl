@@ -1,0 +1,86 @@
+
+package rules
+
+import model.Patient;
+import model.MissingClinicalData;
+
+// M_M01: Distant disease information is missing
+rule "M_M01 - Missing distant disease"
+salience 7500
+when
+    $patient : Patient(
+        $id : patientId,
+        distantDisease == null
+    )
+
+    not MissingClinicalData(
+        patientId == $id,
+        category == "M",
+        field == "distantDisease"
+    )
+then
+    insert(new MissingClinicalData(
+        $id,
+        "M",
+        "distantDisease",
+        "Distant disease information is missing."
+    ));
+end
+
+// M_M02: Distant metastasis status is unknown
+rule "M_M02 - Missing distant metastasis status"
+salience 7500
+when
+    $patient : Patient(
+        $id : patientId,
+        $distant : distantDisease
+    )
+
+    eval($distant != null &&
+         $distant.getDistantMetastasis() == null)
+
+    not MissingClinicalData(
+        patientId == $id,
+        category == "M",
+        field == "distantMetastasis"
+    )
+then
+    insert(new MissingClinicalData(
+        $id,
+        "M",
+        "distantMetastasis",
+        "Distant metastasis status is unknown."
+    ));
+end
+
+// M_M03: Metastasis confirmed but location unknown
+rule "M_M03 - Missing metastatic location"
+salience 7500
+when
+    $patient : Patient(
+        $id : patientId,
+        $distant : distantDisease
+    )
+
+    eval($distant != null &&
+         Boolean.TRUE.equals($distant.getDistantMetastasis()) &&
+         !Boolean.TRUE.equals(
+             $distant.getDistantSkinSoftTissueNonregionalNode()) &&
+         !Boolean.TRUE.equals($distant.getLungMetastasis()) &&
+         !Boolean.TRUE.equals(
+             $distant.getNonCnsVisceralMetastasis()) &&
+         !Boolean.TRUE.equals($distant.getCnsMetastasis()))
+
+    not MissingClinicalData(
+        patientId == $id,
+        category == "M",
+        field == "metastasisSite"
+    )
+then
+    insert(new MissingClinicalData(
+        $id,
+        "M",
+        "metastasisSite",
+        "Distant metastasis is confirmed, but its location is unknown."
+    ));
+end
