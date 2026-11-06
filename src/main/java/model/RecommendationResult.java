@@ -7,11 +7,31 @@ import java.util.List;
 
 public class RecommendationResult {
 
-    private final List<ClinicalRecommendation> recommendations =
-            new ArrayList<>();
+    private final int patientId;
+    private final List<ClinicalRecommendation> recommendations;
 
-    // Add a recommendation, avoiding duplicate rule IDs
+    public RecommendationResult(int patientId) {
+        this.patientId = patientId;
+        this.recommendations = new ArrayList<>();
+    }
+
+    public int getPatientId() {
+        return patientId;
+    }
+
     public void addRecommendation(ClinicalRecommendation recommendation) {
+
+        if (recommendation == null) {
+            throw new IllegalArgumentException(
+                    "Recommendation cannot be null."
+            );
+        }
+
+        if (recommendation.getPatientId() != patientId) {
+            throw new IllegalArgumentException(
+                    "Recommendation belongs to a different patient."
+            );
+        }
 
         for (ClinicalRecommendation existing : recommendations) {
             if (existing.getRuleId().equals(recommendation.getRuleId())) {
@@ -22,7 +42,6 @@ public class RecommendationResult {
         recommendations.add(recommendation);
     }
 
-    // Return recommendations ordered by priority
     public List<ClinicalRecommendation> getRecommendations() {
 
         List<ClinicalRecommendation> sorted =
@@ -44,4 +63,5 @@ public class RecommendationResult {
     public int getRecommendationCount() {
         return recommendations.size();
     }
+
 }

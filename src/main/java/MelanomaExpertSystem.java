@@ -125,7 +125,8 @@ public class MelanomaExpertSystem {
          }
 
 
-         RecommendationResult result = new RecommendationResult();
+         RecommendationResult result =
+                 new RecommendationResult(patient.getPatientId());
 
          KieSession kieSession = kieContainer.newKieSession();
 

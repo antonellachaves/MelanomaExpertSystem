@@ -1,0 +1,195 @@
+
+package rules
+
+import model.Patient;
+import model.ClinicalFinding;
+import model.PrimaryTumorType;
+import model.PrimaryTumor;
+import model.MelanomaClassification;
+import model.SurgeryStatus;
+import model.DiseaseStatus;
+
+
+
+rule "INF-01 - Detect suspected regional nodal disease"
+    salience 6000
+    when
+        $patient : Patient(
+            clinicalContext.suspiciousRegionalNode == Boolean.TRUE
+            || (
+                regionalDisease != null
+                && regionalDisease.clinicallyDetectedNode == true
+            )
+        )
+
+        not ClinicalFinding(
+            patientId == $patient.patientId,
+            type == "SUSPECTED_NODAL_DISEASE"
+        )
+    then
+        ClinicalFinding finding = new ClinicalFinding(
+            $patient.getPatientId(),
+            "SUSPECTED_NODAL_DISEASE",
+            "A suspicious or clinically detected regional lymph node has been identified.",
+            "INF-01"
+        );
+
+        insert(finding);
+
+        System.out.println(
+            "Patient " + $patient.getPatientId()
+            + " -> INF-01 fired: suspected nodal disease"
+        );
+end
+
+
+
+rule "INF-02 - Identify clinically node-negative patient"
+    salience 6000
+    when
+        $patient : Patient(
+            clinicalContext.suspiciousRegionalNode == Boolean.FALSE,
+            regionalDisease != null,
+            distantDisease != null,
+            regionalDisease.involvedRegionalNodes == 0,
+            regionalDisease.clinicallyDetectedNode == false,
+            distantDisease.distantMetastasis == false
+        )
+
+        not ClinicalFinding(
+            patientId == $patient.patientId,
+            type == "CLINICALLY_NODE_NEGATIVE"
+        )
+
+    then
+        ClinicalFinding finding = new ClinicalFinding(
+            $patient.getPatientId(),
+            "CLINICALLY_NODE_NEGATIVE",
+            "No clinically suspicious regional nodes or "
+            + "known distant metastases have been identified.",
+            "INF-02"
+        );
+
+        insert(finding);
+
+        System.out.println(
+            "Patient " + $patient.getPatientId()
+            + " -> INF-02 fired: clinically node-negative"
+        );
+end
+
+
+
+rule "INF-03 - Identify SLNB eligibility criteria"
+    salience 5900
+    when
+        $patient : Patient(
+            $id : patientId,
+            primaryTumor != null,
+            primaryTumor.type == PrimaryTumorType.INVASIVE,
+            primaryTumor.breslowThicknessMm != null,
+            primaryTumor.breslowThicknessMm >= 1.0
+        )
+
+        ClinicalFinding(
+            patientId == $id,
+            type == "CLINICALLY_NODE_NEGATIVE"
+        )
+
+        not ClinicalFinding(
+            patientId == $id,
+            type == "SLNB_CRITERIA_MET"
+        )
+
+    then
+        insert(new ClinicalFinding(
+            $id,
+            "SLNB_CRITERIA_MET",
+            "Breslow thickness is at least 1.0 mm "
+            + "and no clinically detected regional "
+            + "nodal disease has been identified.",
+            "INF-03"
+        ));
+
+        System.out.println(
+            "Patient " + $id
+            + " -> INF-03 fired: SLNB criteria met"
+        );
+end
+
+
+rule "INF-04 - Identify advanced staging assessment"
+    salience 5900
+    when
+        $patient : Patient(
+            $id : patientId
+        )
+
+        MelanomaClassification(
+            patientId == $id,
+            stage != null,
+            stage.toString() in (
+                "IIB", "IIC", "IIIA", "IIIB",
+                "IIIC", "IIID", "IV"
+            )
+        )
+
+        not ClinicalFinding(
+            patientId == $id,
+            type == "ADVANCED_STAGING_ASSESSMENT_NEEDED"
+        )
+
+    then
+        insert(new ClinicalFinding(
+            $id,
+            "ADVANCED_STAGING_ASSESSMENT_NEEDED",
+            "The melanoma stage warrants assessment "
+            + "of appropriate staging investigations.",
+            "INF-04"
+        ));
+
+        System.out.println(
+            "Patient " + $id
+            + " -> INF-04 fired: staging assessment needed"
+        );
+end
+
+
+rule "INF-05 - Identify routine follow-up scenario"
+    salience 5800
+    when
+        $patient : Patient(
+            $id : patientId,
+            clinicalContext.surgeryStatus == SurgeryStatus.COMPLETE,
+            clinicalContext.diseaseStatus == DiseaseStatus.NO_EVIDENCE_OF_DISEASE,
+            clinicalContext.newSymptoms == Boolean.FALSE,
+            clinicalContext.suspiciousRegionalNode == Boolean.FALSE
+        )
+
+        not ClinicalFinding(
+            patientId == $id,
+            type == "SUSPECTED_NODAL_DISEASE"
+        )
+
+        not ClinicalFinding(
+            patientId == $id,
+            type == "ROUTINE_FOLLOW_UP_SCENARIO"
+        )
+
+    then
+        insert(new ClinicalFinding(
+            $id,
+            "ROUTINE_FOLLOW_UP_SCENARIO",
+            "Surgery is complete, there is no documented "
+            + "evidence of disease, and no new symptoms "
+            + "or suspicious regional nodes are reported.",
+            "INF-05"
+        ));
+
+        System.out.println(
+            "Patient " + $id
+            + " -> INF-05 fired: routine follow-up scenario"
+        );
+end
+
+
