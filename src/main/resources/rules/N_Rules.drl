@@ -5,6 +5,7 @@ import model.Patient;
 import model.MelanomaClassification;
 import model.NCategory;
 
+
 // N_R01: No regional lymph node or locoregional metastasis
 rule "N_R01 - N0"
 salience 9000
@@ -15,19 +16,20 @@ when
     )
 
     eval($regional != null
-        && Integer.valueOf(0).equals($regional.getInvolvedRegionalNodes())
+        && $regional.getInvolvedRegionalNodes() != null
+        && $regional.getInvolvedRegionalNodes() == 0
         && Boolean.FALSE.equals($regional.hasLocoregionalMetastasis())
         && Boolean.FALSE.equals($regional.getMattedNodes()))
 
     $classification : MelanomaClassification(
         patientId == $id,
-        tCategory != null,
         nCategory == null
     )
 then
     $classification.setNCategory(NCategory.N0);
     update($classification);
 end
+
 
 // N_R02: One clinically occult node
 rule "N_R02 - N1A"
@@ -39,20 +41,21 @@ when
     )
 
     eval($regional != null
-        && Integer.valueOf(1).equals($regional.getInvolvedRegionalNodes())
+        && $regional.getInvolvedRegionalNodes() != null
+        && $regional.getInvolvedRegionalNodes() == 1
         && Boolean.FALSE.equals($regional.getClinicallyDetectedNode())
         && Boolean.FALSE.equals($regional.hasLocoregionalMetastasis())
         && Boolean.FALSE.equals($regional.getMattedNodes()))
 
     $classification : MelanomaClassification(
         patientId == $id,
-        tCategory != null,
         nCategory == null
     )
 then
     $classification.setNCategory(NCategory.N1A);
     update($classification);
 end
+
 
 // N_R03: One clinically detected node
 rule "N_R03 - N1B"
@@ -64,20 +67,21 @@ when
     )
 
     eval($regional != null
-        && Integer.valueOf(1).equals($regional.getInvolvedRegionalNodes())
+        && $regional.getInvolvedRegionalNodes() != null
+        && $regional.getInvolvedRegionalNodes() == 1
         && Boolean.TRUE.equals($regional.getClinicallyDetectedNode())
         && Boolean.FALSE.equals($regional.hasLocoregionalMetastasis())
         && Boolean.FALSE.equals($regional.getMattedNodes()))
 
     $classification : MelanomaClassification(
         patientId == $id,
-        tCategory != null,
         nCategory == null
     )
 then
     $classification.setNCategory(NCategory.N1B);
     update($classification);
 end
+
 
 // N_R04: No involved nodes, locoregional metastasis present
 rule "N_R04 - N1C"
@@ -89,19 +93,20 @@ when
     )
 
     eval($regional != null
-        && Integer.valueOf(0).equals($regional.getInvolvedRegionalNodes())
+        && $regional.getInvolvedRegionalNodes() != null
+        && $regional.getInvolvedRegionalNodes() == 0
         && Boolean.TRUE.equals($regional.hasLocoregionalMetastasis())
         && Boolean.FALSE.equals($regional.getMattedNodes()))
 
     $classification : MelanomaClassification(
         patientId == $id,
-        tCategory != null,
         nCategory == null
     )
 then
     $classification.setNCategory(NCategory.N1C);
     update($classification);
 end
+
 
 // N_R05: Two or three clinically occult nodes
 rule "N_R05 - N2A"
@@ -122,13 +127,13 @@ when
 
     $classification : MelanomaClassification(
         patientId == $id,
-        tCategory != null,
         nCategory == null
     )
 then
     $classification.setNCategory(NCategory.N2A);
     update($classification);
 end
+
 
 // N_R06: Two or three nodes, at least one clinically detected
 rule "N_R06 - N2B"
@@ -149,13 +154,13 @@ when
 
     $classification : MelanomaClassification(
         patientId == $id,
-        tCategory != null,
         nCategory == null
     )
 then
     $classification.setNCategory(NCategory.N2B);
     update($classification);
 end
+
 
 // N_R07: One involved node with locoregional metastasis
 rule "N_R07 - N2C"
@@ -167,19 +172,20 @@ when
     )
 
     eval($regional != null
-        && Integer.valueOf(1).equals($regional.getInvolvedRegionalNodes())
+        && $regional.getInvolvedRegionalNodes() != null
+        && $regional.getInvolvedRegionalNodes() == 1
         && Boolean.TRUE.equals($regional.hasLocoregionalMetastasis())
         && Boolean.FALSE.equals($regional.getMattedNodes()))
 
     $classification : MelanomaClassification(
         patientId == $id,
-        tCategory != null,
         nCategory == null
     )
 then
     $classification.setNCategory(NCategory.N2C);
     update($classification);
 end
+
 
 // N_R08: Four or more clinically occult nodes
 rule "N_R08 - N3A"
@@ -199,13 +205,13 @@ when
 
     $classification : MelanomaClassification(
         patientId == $id,
-        tCategory != null,
         nCategory == null
     )
 then
     $classification.setNCategory(NCategory.N3A);
     update($classification);
 end
+
 
 // N_R09: Four or more nodes, at least one clinically detected
 rule "N_R09 - N3B"
@@ -225,13 +231,13 @@ when
 
     $classification : MelanomaClassification(
         patientId == $id,
-        tCategory != null,
         nCategory == null
     )
 then
     $classification.setNCategory(NCategory.N3B);
     update($classification);
 end
+
 
 // N_R10: Matted nodes without locoregional metastasis
 rule "N_R10 - N3B matted nodes"
@@ -248,13 +254,13 @@ when
 
     $classification : MelanomaClassification(
         patientId == $id,
-        tCategory != null,
         nCategory == null
     )
 then
     $classification.setNCategory(NCategory.N3B);
     update($classification);
 end
+
 
 // N_R11: Two or more nodes with locoregional metastasis
 rule "N_R11 - N3C"
@@ -273,13 +279,13 @@ when
 
     $classification : MelanomaClassification(
         patientId == $id,
-        tCategory != null,
         nCategory == null
     )
 then
     $classification.setNCategory(NCategory.N3C);
     update($classification);
 end
+
 
 // N_R12: Matted nodes with locoregional metastasis
 rule "N_R12 - N3C matted nodes"
@@ -296,7 +302,6 @@ when
 
     $classification : MelanomaClassification(
         patientId == $id,
-        tCategory != null,
         nCategory == null
     )
 then

@@ -5,6 +5,7 @@ import model.Patient;
 import model.ClinicalFinding;
 import model.PrimaryTumorType;
 import model.MelanomaClassification;
+import model.MelanomaStage;
 import model.SurgeryStatus;
 import model.DiseaseStatus;
 import model.SentinelNodeBiopsyStatus;
@@ -14,21 +15,21 @@ import model.SentinelNodeBiopsyStatus;
 rule "INF-01 - Identify regional nodal concern"
     salience 6000
 when
-    $patient : Patient(
-        $id : patientId
+    Patient(
+        $id : patientId,
+        $context : clinicalContext,
+        $regional : regionalDisease
     )
 
     eval(
-        ($patient.getClinicalContext() != null
+        ($context != null
          && Boolean.TRUE.equals(
-             $patient.getClinicalContext()
-                     .getSuspiciousRegionalNode()
+             $context.getSuspiciousRegionalNode()
          ))
         ||
-        ($patient.getRegionalDisease() != null
+        ($regional != null
          && Boolean.TRUE.equals(
-             $patient.getRegionalDisease()
-                     .getClinicallyDetectedNode()
+             $regional.getClinicallyDetectedNode()
          ))
     )
 
@@ -57,21 +58,20 @@ end
 rule "INF-02 - Identify clinically node-negative patient"
     salience 6000
 when
-    $patient : Patient(
+    Patient(
         $id : patientId,
-        clinicalContext != null,
-        regionalDisease != null
+        $context : clinicalContext,
+        $regional : regionalDisease
     )
 
     eval(
-        Boolean.FALSE.equals(
-            $patient.getClinicalContext()
-                    .getSuspiciousRegionalNode()
+        $context != null
+        && $regional != null
+        && Boolean.FALSE.equals(
+            $context.getSuspiciousRegionalNode()
         )
-        &&
-        Boolean.FALSE.equals(
-            $patient.getRegionalDisease()
-                    .getClinicallyDetectedNode()
+        && Boolean.FALSE.equals(
+            $regional.getClinicallyDetectedNode()
         )
     )
 
@@ -101,24 +101,19 @@ end
 rule "INF-03 - Identify SLNB consideration criteria"
     salience 5900
 when
-    $patient : Patient(
+    Patient(
         $id : patientId,
-        primaryTumor != null,
-        clinicalContext != null
+        $tumor : primaryTumor,
+        $context : clinicalContext
     )
 
     eval(
-        $patient.getPrimaryTumor().getType()
-            == PrimaryTumorType.INVASIVE
-        &&
-        $patient.getPrimaryTumor()
-                .getBreslowThicknessMm() != null
-        &&
-        $patient.getPrimaryTumor()
-                .getBreslowThicknessMm() >= 1.0
-        &&
-        $patient.getClinicalContext()
-                .getSentiFnelNodeBiopsyStatus()
+        $tumor != null
+        && $context != null
+        && $tumor.getType() == PrimaryTumorType.INVASIVE
+        && $tumor.getBreslowThicknessMm() != null
+        && $tumor.getBreslowThicknessMm() >= 1.0
+        && $context.getSentinelNodeBiopsyStatus()
             == SentinelNodeBiopsyStatus.NOT_PERFORMED
     )
 
@@ -155,18 +150,21 @@ end
 rule "INF-04 - Identify advanced staging assessment"
     salience 5900
 when
-    $patient : Patient(
+    Patient(
         $id : patientId
     )
 
-    $classification : MelanomaClassification(
+    MelanomaClassification(
         patientId == $id,
-        stage != null
-    )
-
-    eval(
-        $classification.getStage().toString()
-            .matches("IIB|IIC|IIIA|IIIB|IIIC|IIID|IV")
+        stage in (
+            MelanomaStage.IIB,
+            MelanomaStage.IIC,
+            MelanomaStage.IIIA,
+            MelanomaStage.IIIB,
+            MelanomaStage.IIIC,
+            MelanomaStage.IIID,
+            MelanomaStage.IV
+        )
     )
 
     not ClinicalFinding(
@@ -195,45 +193,35 @@ end
 rule "INF-05 - Identify routine follow-up scenario"
     salience 5800
 when
-    $patient : Patient(
+    Patient(
         $id : patientId,
-        clinicalContext != null,
-        regionalDisease != null,
-        distantDisease != null
+        $context : clinicalContext,
+        $regional : regionalDisease,
+        $distant : distantDisease
     )
 
     eval(
-        $patient.getClinicalContext()
-                .getSurgeryStatus()
+        $context != null
+        && $regional != null
+        && $distant != null
+        && $context.getSurgeryStatus()
             == SurgeryStatus.COMPLETE
-        &&
-        $patient.getClinicalContext()
-                .getDiseaseStatus()
+        && $context.getDiseaseStatus()
             == DiseaseStatus.NO_EVIDENCE_OF_DISEASE
-        &&
-        Boolean.FALSE.equals(
-            $patient.getClinicalContext()
-                    .getNewSymptoms()
+        && Boolean.FALSE.equals(
+            $context.getNewSymptoms()
         )
-        &&
-        Boolean.FALSE.equals(
-            $patient.getClinicalContext()
-                    .getSuspiciousRegionalNode()
+        && Boolean.FALSE.equals(
+            $context.getSuspiciousRegionalNode()
         )
-        &&
-        Boolean.FALSE.equals(
-            $patient.getClinicalContext()
-                    .getCurrentlyUnderTreatment()
+        && Boolean.FALSE.equals(
+            $context.getCurrentlyUnderTreatment()
         )
-        &&
-        Boolean.FALSE.equals(
-            $patient.getRegionalDisease()
-                    .getClinicallyDetectedNode()
+        && Boolean.FALSE.equals(
+            $regional.getClinicallyDetectedNode()
         )
-        &&
-        Boolean.FALSE.equals(
-            $patient.getDistantDisease()
-                    .getDistantMetastasis()
+        && Boolean.FALSE.equals(
+            $distant.getDistantMetastasis()
         )
     )
 

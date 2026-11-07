@@ -2,6 +2,10 @@
 import model.Patient;
 import model.MelanomaClassification;
 import model.RecommendationResult;
+import model.EvaluationResult;
+import model.EvaluationStatus;
+import model.MissingClinicalData;
+import model.ClinicalFinding;
 
 import org.kie.api.KieServices;
 import org.kie.api.runtime.KieContainer;
@@ -150,6 +154,109 @@ public class MelanomaExpertSystem {
              kieSession.dispose();
          }
      }
+
+
+
+     public EvaluationResult evaluate(Patient patient) {
+
+         if (patient == null) {
+             throw new IllegalArgumentException(
+                     "Patient cannot be null"
+             );
+         }
+
+         MelanomaClassification classification =
+                 new MelanomaClassification(patient.getPatientId());
+
+         EvaluationResult result =
+                 new EvaluationResult(patient.getPatientId(), classification);
+
+         KieSession kieSession = kieContainer.newKieSession();
+
+         try {
+             kieSession.insert(patient);
+             kieSession.insert(classification);
+
+             int firedRules = kieSession.fireAllRules();
+
+             System.out.println(
+                     "Patient " + patient.getPatientId()
+                             + " -> Evaluation rules fired: " + firedRules
+             );
+
+             // 1. Collect missing clinical data and clinical findings
+             for (Object fact : kieSession.getObjects()) {
+
+                 if (fact instanceof MissingClinicalData) {
+
+                     MissingClinicalData missing =
+                             (MissingClinicalData) fact;
+
+                     if (missing.getPatientId() == patient.getPatientId()) {
+                         result.addMissingData(missing);
+                     }
+                 }
+
+                 if (fact instanceof ClinicalFinding) {
+
+                     ClinicalFinding finding =
+                             (ClinicalFinding) fact;
+
+                     if (finding.getPatientId() == patient.getPatientId()) {
+
+                         result.addExplanation(
+                                 finding.getSourceRule()
+                                         + ": "
+                                         + finding.getExplanation()
+                         );
+                     }
+                 }
+             }
+
+             // 2. Check whether TNM classification is complete
+             boolean complete =
+                     classification.getTCategory() != null
+                             && classification.getNCategory() != null
+                             && classification.getMCategory() != null
+                             && classification.getStage() != null;
+
+             // 3. Incomplete classification: block recommendations
+             if (!complete) {
+
+                 result.setStatus(EvaluationStatus.INCOMPLETE);
+
+                 for (MissingClinicalData missing : result.getMissingData()) {
+                     result.addExplanation(missing.getExplanation());
+                 }
+
+                 result.addExplanation(
+                         "TNM classification is incomplete. "
+                                 + "Clinical recommendations are blocked."
+                 );
+
+                 return result;
+             }
+
+             // 4. Complete classification
+             result.setStatus(EvaluationStatus.COMPLETE);
+
+            // Insert the validated evaluation result
+             kieSession.insert(result);
+
+            // Execute recommendation rules
+             kieSession.fireAllRules();
+
+             classification.lock();
+             patient.lock();
+
+             return result;
+
+         } finally {
+             kieSession.dispose();
+         }
+     }
+
+
 
 
 

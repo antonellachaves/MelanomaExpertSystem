@@ -1,0 +1,484 @@
+
+package rules
+
+import model.EvaluationResult;
+import model.EvaluationStatus;
+import model.ClinicalFinding;
+import model.Patient;
+import model.MelanomaClassification;
+import model.MelanomaStage;
+import model.BaselineImagingStatus;
+import model.SurgeryStatus;
+import model.DiseaseStatus;
+
+
+// REC-01: Recommend clinical assessment for sentinel lymph node biopsy
+rule "REC-01 - SLNB clinical assessment"
+    salience 5000
+when
+    $result : EvaluationResult(
+        $id : patientId,
+        status == EvaluationStatus.COMPLETE
+    )
+
+    ClinicalFinding(
+        patientId == $id,
+        type == "SLNB_CRITERIA_MET"
+    )
+
+then
+    $result.addRecommendation(
+        "REC-01: Clinical assessment for sentinel lymph node biopsy " +
+        "(SLNB) is recommended for consideration. The invasive melanoma " +
+        "has a Breslow thickness of at least 1.0 mm, no clinically " +
+        "suspicious regional nodes are reported, and SLNB has not " +
+        "been performed. Final eligibility must be assessed clinically."
+    );
+
+    System.out.println(
+        "Patient " + $id +
+        " -> REC-01: SLNB clinical assessment recommended"
+    );
+end
+
+
+ // REC-02C: Baseline staging imaging for stages IIB-IIC
+rule "REC-02C - Baseline imaging for IIB-IIC"
+    salience 4900
+when
+    $result : EvaluationResult(
+        $id : patientId,
+        status == EvaluationStatus.COMPLETE
+    )
+
+    MelanomaClassification(
+        patientId == $id,
+        stage in (
+            MelanomaStage.IIB,
+            MelanomaStage.IIC
+        )
+    )
+
+    Patient(
+        patientId == $id,
+        $context : clinicalContext
+    )
+
+    eval(
+        $context != null
+        && $context.getBaselineImagingStatus()
+            == BaselineImagingStatus.NOT_PERFORMED
+    )
+
+    ClinicalFinding(
+        patientId == $id,
+        type == "ADVANCED_STAGING_ASSESSMENT_NEEDED"
+    )
+
+then
+    $result.addRecommendation(
+        "REC-02C: For stage IIB-IIC melanoma, consider " +
+        "body CT or PET-CT and brain MRI for baseline staging. " +
+        "These investigations have not been recorded as " +
+        "performed. The final imaging plan should be " +
+        "individualized according to clinical findings."
+    );
+
+    System.out.println(
+        "Patient " + $id +
+        " -> REC-02C: IIB-IIC baseline imaging"
+    );
+end
+
+
+ // REC-02F: Unknown baseline imaging status
+rule "REC-02F - Unknown baseline imaging status"
+    salience 4900
+when
+    $result : EvaluationResult(
+        $id : patientId,
+        status == EvaluationStatus.COMPLETE
+    )
+
+    Patient(
+        patientId == $id,
+        $context : clinicalContext
+    )
+
+    eval(
+        $context != null
+        && $context.getBaselineImagingStatus()
+            == BaselineImagingStatus.UNKNOWN
+    )
+
+    ClinicalFinding(
+        patientId == $id,
+        type == "ADVANCED_STAGING_ASSESSMENT_NEEDED"
+    )
+
+then
+    $result.addRecommendation(
+        "REC-02F: Baseline imaging status is unknown. " +
+        "Verify whether body CT or PET-CT and brain MRI " +
+        "have been performed, and review their results " +
+        "before determining which additional staging " +
+        "investigations are needed."
+    );
+
+    System.out.println(
+        "Patient " + $id +
+        " -> REC-02F: baseline imaging information missing"
+    );
+end
+
+
+ // REC-02B: Regional lymph node ultrasound assessment
+rule "REC-02B - Regional ultrasound for IB-IIA"
+    salience 4900
+when
+    $result : EvaluationResult(
+        $id : patientId,
+        status == EvaluationStatus.COMPLETE
+    )
+
+    MelanomaClassification(
+        patientId == $id,
+        stage in (
+            MelanomaStage.IB,
+            MelanomaStage.IIA
+        )
+    )
+
+    Patient(
+        patientId == $id,
+        $context : clinicalContext
+    )
+
+    eval(
+        $context != null
+        && $context.getRegionalNodeUltrasoundStatus()
+            == BaselineImagingStatus.NOT_PERFORMED
+        && Boolean.FALSE.equals(
+            $context.getSuspiciousRegionalNode()
+        )
+    )
+
+    ClinicalFinding(
+        patientId == $id,
+        type == "CLINICALLY_NODE_NEGATIVE"
+    )
+
+then
+    $result.addRecommendation(
+        "REC-02B: For stage IB-IIA melanoma, consider " +
+        "regional lymph node ultrasound as part of the " +
+        "stage-appropriate assessment. The ultrasound " +
+        "is recorded as not performed, and no clinically " +
+        "suspicious regional nodes are reported."
+    );
+
+    System.out.println(
+        "Patient " + $id +
+        " -> REC-02B: regional lymph node ultrasound"
+    );
+end
+
+
+
+rule "REC-02D - Unknown regional ultrasound status"
+    salience 4900
+when
+    $result : EvaluationResult(
+        $id : patientId,
+        status == EvaluationStatus.COMPLETE
+    )
+
+    MelanomaClassification(
+        patientId == $id,
+        stage in (
+            MelanomaStage.IB,
+            MelanomaStage.IIA
+        )
+    )
+
+    Patient(
+        patientId == $id,
+        clinicalContext.regionalNodeUltrasoundStatus
+            == BaselineImagingStatus.UNKNOWN
+    )
+
+    ClinicalFinding(
+        patientId == $id,
+        type == "CLINICALLY_NODE_NEGATIVE"
+    )
+
+then
+    $result.addRecommendation(
+        "REC-02D: Regional lymph node ultrasound status " +
+        "is unknown. Verify whether the ultrasound has " +
+        "already been performed and review its results " +
+        "before deciding if further regional imaging " +
+        "is necessary."
+    );
+
+    System.out.println(
+        "Patient " + $id +
+        " -> REC-02D: unknown ultrasound status"
+    );
+end
+
+
+rule "REC-02G - Baseline imaging for stage III-IV"
+    salience 4900
+when
+    $result : EvaluationResult(
+        $id : patientId,
+        status == EvaluationStatus.COMPLETE
+    )
+
+    MelanomaClassification(
+        patientId == $id,
+        stage in (
+            MelanomaStage.IIIA,
+            MelanomaStage.IIIB,
+            MelanomaStage.IIIC,
+            MelanomaStage.IIID,
+            MelanomaStage.IV
+        )
+    )
+
+    Patient(
+        patientId == $id,
+        clinicalContext.baselineImagingStatus
+            == BaselineImagingStatus.NOT_PERFORMED
+    )
+
+    ClinicalFinding(
+        patientId == $id,
+        type == "ADVANCED_STAGING_ASSESSMENT_NEEDED"
+    )
+
+then
+    $result.addRecommendation(
+        "REC-02G: For stage III-IV melanoma, " +
+        "a baseline staging assessment with body CT " +
+        "or PET-CT and brain MRI should be considered. " +
+        "Baseline imaging is recorded as not performed. " +
+        "The investigations must be individualized " +
+        "according to disease extent and clinical findings."
+    );
+
+    System.out.println(
+        "Patient " + $id +
+        " -> REC-02G: baseline imaging for stage III-IV"
+    );
+end
+
+
+rule "REC-03A - Routine melanoma follow-up"
+    salience 4800
+when
+    $result : EvaluationResult(
+        $id : patientId,
+        status == EvaluationStatus.COMPLETE
+    )
+
+    ClinicalFinding(
+        patientId == $id,
+        type == "ROUTINE_FOLLOW_UP_SCENARIO"
+    )
+
+then
+    $result.addRecommendation(
+        "REC-03A: The patient meets the criteria for " +
+        "a routine melanoma follow-up scenario. " +
+        "Continue scheduled clinical surveillance, " +
+        "including skin and regional lymph node " +
+        "assessment. Follow-up frequency and additional " +
+        "investigations should be individualized " +
+        "according to melanoma stage, clinical history " +
+        "and current findings."
+    );
+
+    System.out.println(
+        "Patient " + $id +
+        " -> REC-03A: routine follow-up"
+    );
+end
+
+
+rule "REC-03B - New symptoms during follow-up"
+    salience 4800
+when
+    $result : EvaluationResult(
+        $id : patientId,
+        status == EvaluationStatus.COMPLETE
+    )
+
+    Patient(
+        patientId == $id,
+        clinicalContext.surgeryStatus
+            == SurgeryStatus.COMPLETE,
+        clinicalContext.diseaseStatus
+            == DiseaseStatus.NO_EVIDENCE_OF_DISEASE,
+        clinicalContext.newSymptoms == true
+    )
+
+then
+    $result.addRecommendation(
+        "REC-03B: New symptoms have been reported " +
+        "during melanoma follow-up. A targeted clinical " +
+        "assessment is recommended to investigate their " +
+        "cause and determine whether additional " +
+        "diagnostic investigations are necessary. " +
+        "Routine surveillance alone may be insufficient."
+    );
+
+    System.out.println(
+        "Patient " + $id +
+        " -> REC-03B: new symptoms during follow-up"
+    );
+end
+
+
+rule "REC-03C - Suspicious regional nodes during follow-up"
+    salience 4800
+when
+    $result : EvaluationResult(
+        $id : patientId,
+        status == EvaluationStatus.COMPLETE
+    )
+
+    Patient(
+        patientId == $id,
+        clinicalContext.surgeryStatus
+            == SurgeryStatus.COMPLETE,
+        clinicalContext.diseaseStatus
+            == DiseaseStatus.NO_EVIDENCE_OF_DISEASE,
+        clinicalContext.suspiciousRegionalNode == true
+    )
+
+    ClinicalFinding(
+        patientId == $id,
+        type == "SUSPECTED_NODAL_DISEASE"
+    )
+
+then
+
+    $result.addRecommendation(
+        "REC-03C: Suspicious regional lymph nodes have " +
+        "been identified during melanoma follow-up. " +
+        "Targeted regional lymph node ultrasound and " +
+        "consideration of ultrasound-guided fine-needle " +
+        "aspiration or core biopsy are recommended. " +
+        "The currently reported TNM stage is based on " +
+        "previously recorded staging information and " +
+        "may require reassessment if regional nodal " +
+        "involvement is confirmed. Suspicion alone does " +
+        "not establish metastatic disease."
+    );
+
+
+    System.out.println(
+        "Patient " + $id +
+        " -> REC-03C: suspicious regional nodes"
+    );
+end
+
+
+rule "REC-04A - Adjuvant therapy eligibility assessment"
+    salience 4700
+when
+    $result : EvaluationResult(
+        $id : patientId,
+        status == EvaluationStatus.COMPLETE
+    )
+
+    MelanomaClassification(
+        patientId == $id,
+        stage in (
+            MelanomaStage.IIB,
+            MelanomaStage.IIC
+        )
+    )
+
+    Patient(
+        patientId == $id,
+        clinicalContext.surgeryStatus
+            == SurgeryStatus.COMPLETE,
+        clinicalContext.diseaseStatus
+            == DiseaseStatus.NO_EVIDENCE_OF_DISEASE,
+        clinicalContext.currentlyUnderTreatment
+            == false,
+        clinicalContext.adjuvantEligibilityAssessed
+            == false
+    )
+
+then
+    $result.addRecommendation(
+        "REC-04A: The patient has completely resected " +
+        "stage IIB-IIC melanoma with no current evidence " +
+        "of disease. An oncology assessment for adjuvant " +
+        "anti-PD-1 therapy eligibility is recommended. " +
+        "Pembrolizumab or nivolumab may be considered " +
+        "according to EADO and ESMO guidelines. " +
+        "Treatment benefits, risks and individual " +
+        "clinical factors must be evaluated by the " +
+        "multidisciplinary oncology team."
+    );
+
+    System.out.println(
+        "Patient " + $id +
+        " -> REC-04A: adjuvant eligibility assessment"
+    );
+end
+
+
+
+rule "REC-04B - Unknown adjuvant eligibility assessment"
+    salience 4700
+when
+    $result : EvaluationResult(
+        $id : patientId,
+        status == EvaluationStatus.COMPLETE
+    )
+
+    MelanomaClassification(
+        patientId == $id,
+        stage in (
+            MelanomaStage.IIB,
+            MelanomaStage.IIC
+        )
+    )
+
+    Patient(
+        patientId == $id,
+        clinicalContext.surgeryStatus
+            == SurgeryStatus.COMPLETE,
+        clinicalContext.diseaseStatus
+            == DiseaseStatus.NO_EVIDENCE_OF_DISEASE,
+        clinicalContext.currentlyUnderTreatment
+            == false,
+        clinicalContext.adjuvantEligibilityAssessed
+            == null
+    )
+
+then
+    $result.addRecommendation(
+        "REC-04B: Adjuvant therapy eligibility assessment " +
+        "status is unknown. Verify whether an oncology " +
+        "assessment for adjuvant treatment has already " +
+        "been performed before determining whether " +
+        "a new assessment is required."
+    );
+
+    System.out.println(
+        "Patient " + $id +
+        " -> REC-04B: unknown adjuvant assessment status"
+    );
+end
+
+
+
+
+

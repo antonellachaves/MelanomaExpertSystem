@@ -62,6 +62,11 @@ public class ClinicalInferenceTest {
         patient.getClinicalContext()
                 .setSuspiciousRegionalNode(false);
 
+        patient.getClinicalContext()
+                .setSentinelNodeBiopsyStatus(
+                        SentinelNodeBiopsyStatus.NOT_PERFORMED
+                );
+
         KieSession session = KieServices.Factory.get()
                 .getKieClasspathContainer()
                 .newKieSession();
@@ -111,6 +116,11 @@ public class ClinicalInferenceTest {
 
         patient.getClinicalContext()
                 .setSuspiciousRegionalNode(false);
+
+        patient.getClinicalContext()
+                .setSentinelNodeBiopsyStatus(
+                        SentinelNodeBiopsyStatus.NOT_PERFORMED
+                );
 
         KieSession session = KieServices.Factory.get()
                 .getKieClasspathContainer()
@@ -201,6 +211,24 @@ public class ClinicalInferenceTest {
     void patientWithoutEvidenceOfDiseaseShouldGenerateFollowUpFinding() {
 
         Patient patient = new Patient(1005);
+
+        patient.setRegionalDisease(
+                new RegionalDisease(
+                        0, false, false,
+                        false, false, false
+                )
+        );
+
+        patient.setDistantDisease(
+                new DistantDisease(
+                        false, false, false,
+                        false, false,
+                        LdhStatus.NOT_RECORDED
+                )
+        );
+
+        patient.getClinicalContext()
+                .setCurrentlyUnderTreatment(false);
 
         patient.getClinicalContext()
                 .setSurgeryStatus(SurgeryStatus.COMPLETE);

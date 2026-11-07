@@ -913,4 +913,1319 @@ public class MelanomaExpertSystemTest {
         );
     }
 
+
+    @Test
+    void evaluateShouldReturnCompleteForValidPatient() {
+
+        Patient patient = new Patient(40001);
+
+        patient.setPrimaryTumor(
+                new PrimaryTumor(1.5, false)
+        );
+
+        patient.setRegionalDisease(
+                new RegionalDisease(
+                        0, false, false,
+                        false, false, false
+                )
+        );
+
+        patient.setDistantDisease(
+                new DistantDisease(
+                        false, false, false,
+                        false, false,
+                        LdhStatus.NOT_RECORDED
+                )
+        );
+
+        MelanomaExpertSystem system = new MelanomaExpertSystem();
+
+        EvaluationResult result = system.evaluate(patient);
+
+        assertEquals(EvaluationStatus.COMPLETE, result.getStatus());
+        assertEquals(TCategory.T2A, result.getClassification().getTCategory());
+        assertEquals(NCategory.N0, result.getClassification().getNCategory());
+        assertEquals(MCategory.M0, result.getClassification().getMCategory());
+        assertEquals(MelanomaStage.IB, result.getClassification().getStage());
+        assertTrue(result.getMissingData().isEmpty());
+    }
+
+
+    @Test
+    void evaluateShouldIdentifyMissingBreslow() {
+
+        Patient patient = new Patient(40002);
+
+        patient.setPrimaryTumor(
+                new PrimaryTumor((Double) null, Boolean.FALSE)
+        );
+
+        patient.setRegionalDisease(
+                new RegionalDisease(
+                        0, false, false,
+                        false, false, false
+                )
+        );
+
+        patient.setDistantDisease(
+                new DistantDisease(
+                        false, false, false,
+                        false, false,
+                        LdhStatus.NOT_RECORDED
+                )
+        );
+
+        MelanomaExpertSystem system = new MelanomaExpertSystem();
+
+        EvaluationResult result = system.evaluate(patient);
+
+        assertEquals(EvaluationStatus.INCOMPLETE, result.getStatus());
+
+        assertNull(result.getClassification().getTCategory());
+        assertEquals(NCategory.N0, result.getClassification().getNCategory());
+        assertEquals(MCategory.M0, result.getClassification().getMCategory());
+
+        assertTrue(
+                result.getMissingData().stream().anyMatch(
+                        missing -> missing.getCategory().equals("T")
+                                && missing.getField().equals("breslowThicknessMm")
+                )
+        );
+
+        assertTrue(result.getRecommendations().isEmpty());
+    }
+
+
+
+    @Test
+    void evaluateShouldIncludeClinicalReasoning() {
+
+        Patient patient = new Patient(40003);
+
+        patient.setPrimaryTumor(
+                new PrimaryTumor(1.5, false)
+        );
+
+        patient.setRegionalDisease(
+                new RegionalDisease(
+                        0, false, false,
+                        false, false, false
+                )
+        );
+
+        patient.setDistantDisease(
+                new DistantDisease(
+                        false, false, false,
+                        false, false,
+                        LdhStatus.NOT_RECORDED
+                )
+        );
+
+        patient.getClinicalContext()
+                .setSuspiciousRegionalNode(false);
+
+        patient.getClinicalContext()
+                .setSentinelNodeBiopsyStatus(
+                        SentinelNodeBiopsyStatus.NOT_PERFORMED
+                );
+
+        MelanomaExpertSystem system = new MelanomaExpertSystem();
+
+        EvaluationResult result = system.evaluate(patient);
+
+        // TNM classification must be complete
+        assertEquals(EvaluationStatus.COMPLETE, result.getStatus());
+        assertEquals(MelanomaStage.IB,
+                result.getClassification().getStage());
+
+        // INF-02 must generate the first clinical finding
+        assertTrue(
+                result.getExplanations().stream()
+                        .anyMatch(e -> e.startsWith("INF-02:"))
+        );
+
+        // INF-03 must use that finding to generate another
+        assertTrue(
+                result.getExplanations().stream()
+                        .anyMatch(e -> e.startsWith("INF-03:"))
+        );
+
+        // Recommendations are not implemented yet
+        assertTrue(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-01:"))
+        );
+    }
+
+
+
+    @Test
+    void evaluateShouldNotRecommendSLNBWhenAlreadyPerformed() {
+
+        Patient patient = new Patient(40004);
+
+        patient.setPrimaryTumor(
+                new PrimaryTumor(1.5, false)
+        );
+
+        patient.setRegionalDisease(
+                new RegionalDisease(
+                        0, false, false,
+                        false, false, false
+                )
+        );
+
+        patient.setDistantDisease(
+                new DistantDisease(
+                        false, false, false,
+                        false, false,
+                        LdhStatus.NOT_RECORDED
+                )
+        );
+
+        patient.getClinicalContext()
+                .setSuspiciousRegionalNode(false);
+
+        patient.getClinicalContext()
+                .setSentinelNodeBiopsyStatus(
+                        SentinelNodeBiopsyStatus.NEGATIVE
+                );
+
+        MelanomaExpertSystem system = new MelanomaExpertSystem();
+
+        EvaluationResult result = system.evaluate(patient);
+
+        // TNM classification must be complete
+        assertEquals(
+                EvaluationStatus.COMPLETE,
+                result.getStatus()
+        );
+
+        assertEquals(
+                MelanomaStage.IB,
+                result.getClassification().getStage()
+        );
+
+        // INF-02 should still identify clinically negative nodes
+        assertTrue(
+                result.getExplanations().stream()
+                        .anyMatch(e -> e.startsWith("INF-02:"))
+        );
+
+        // INF-03 must NOT activate
+        assertFalse(
+                result.getExplanations().stream()
+                        .anyMatch(e -> e.startsWith("INF-03:"))
+        );
+
+        // REC-01 must NOT be generated
+        assertFalse(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-01:"))
+        );
+    }
+
+
+    @Test
+    void evaluateShouldBlockRecommendationsWhenTNMIncomplete() {
+
+        Patient patient = new Patient(40005);
+
+        // Missing Breslow thickness
+        patient.setPrimaryTumor(
+                new PrimaryTumor(null, false)
+        );
+
+        patient.setRegionalDisease(
+                new RegionalDisease(
+                        0, false, false,
+                        false, false, false
+                )
+        );
+
+        patient.setDistantDisease(
+                new DistantDisease(
+                        false, false, false,
+                        false, false,
+                        LdhStatus.NOT_RECORDED
+                )
+        );
+
+        patient.getClinicalContext()
+                .setSuspiciousRegionalNode(false);
+
+        patient.getClinicalContext()
+                .setSentinelNodeBiopsyStatus(
+                        SentinelNodeBiopsyStatus.NOT_PERFORMED
+                );
+
+        MelanomaExpertSystem system = new MelanomaExpertSystem();
+
+        EvaluationResult result = system.evaluate(patient);
+
+        // TNM must be incomplete
+        assertEquals(
+                EvaluationStatus.INCOMPLETE,
+                result.getStatus()
+        );
+
+        // Recommendations must remain blocked
+        assertTrue(result.getRecommendations().isEmpty());
+
+        // The system must explain why
+        assertTrue(
+                result.getExplanations().stream()
+                        .anyMatch(e -> e.contains(
+                                "Clinical recommendations are blocked"
+                        ))
+        );
+    }
+
+
+    @Test
+    void evaluateShouldRecommendBaselineImagingForStageIIB() {
+
+        Patient patient = new Patient(40006);
+
+        // Breslow 3.0 mm with ulceration -> T3b
+        patient.setPrimaryTumor(
+                new PrimaryTumor(3.0, true)
+        );
+
+        // No regional nodal involvement -> N0
+        patient.setRegionalDisease(
+                new RegionalDisease(
+                        0, false, false,
+                        false, false, false
+                )
+        );
+
+        // No distant metastasis -> M0
+        patient.setDistantDisease(
+                new DistantDisease(
+                        false, false, false,
+                        false, false,
+                        LdhStatus.NOT_RECORDED
+                )
+        );
+
+        patient.getClinicalContext()
+                .setSuspiciousRegionalNode(false);
+
+        patient.getClinicalContext()
+                .setBaselineImagingStatus(
+                        BaselineImagingStatus.NOT_PERFORMED
+                );
+
+        MelanomaExpertSystem system = new MelanomaExpertSystem();
+
+        EvaluationResult result = system.evaluate(patient);
+
+        // Expected classification: T3b N0 M0 -> Stage IIB
+        assertEquals(
+                EvaluationStatus.COMPLETE,
+                result.getStatus()
+        );
+
+        assertEquals(
+                MelanomaStage.IIB,
+                result.getClassification().getStage()
+        );
+
+        // INF-04 must identify staging assessment need
+        assertTrue(
+                result.getExplanations().stream()
+                        .anyMatch(e -> e.startsWith("INF-04:"))
+        );
+
+        // REC-02C must recommend specific imaging
+        assertTrue(
+                result.getRecommendations().stream()
+                        .anyMatch(r ->
+                                r.startsWith("REC-02C:")
+                                        && r.contains("PET-CT")
+                                        && r.contains("brain MRI")
+                        )
+        );
+    }
+
+
+    @Test
+    void evaluateShouldNotRecommendBaselineImagingWhenComplete() {
+
+        Patient patient = new Patient(40007);
+
+        patient.setPrimaryTumor(
+                new PrimaryTumor(3.0, true)
+        );
+
+        patient.setRegionalDisease(
+                new RegionalDisease(
+                        0, false, false,
+                        false, false, false
+                )
+        );
+
+        patient.setDistantDisease(
+                new DistantDisease(
+                        false, false, false,
+                        false, false,
+                        LdhStatus.NOT_RECORDED
+                )
+        );
+
+        patient.getClinicalContext()
+                .setSuspiciousRegionalNode(false);
+
+        patient.getClinicalContext()
+                .setBaselineImagingStatus(
+                        BaselineImagingStatus.COMPLETE
+                );
+
+        MelanomaExpertSystem system = new MelanomaExpertSystem();
+
+        EvaluationResult result = system.evaluate(patient);
+
+        // Classification must remain complete
+        assertEquals(
+                EvaluationStatus.COMPLETE,
+                result.getStatus()
+        );
+
+        assertEquals(
+                MelanomaStage.IIB,
+                result.getClassification().getStage()
+        );
+
+        // INF-04 must still activate
+        assertTrue(
+                result.getExplanations().stream()
+                        .anyMatch(e -> e.startsWith("INF-04:"))
+        );
+
+        // REC-02C must NOT activate
+        assertFalse(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-02C:"))
+        );
+    }
+
+
+    @Test
+    void evaluateShouldRequestImagingInformationWhenUnknown() {
+
+        Patient patient = new Patient(40008);
+
+        // T3b
+        patient.setPrimaryTumor(
+                new PrimaryTumor(3.0, true)
+        );
+
+        // N0
+        patient.setRegionalDisease(
+                new RegionalDisease(
+                        0, false, false,
+                        false, false, false
+                )
+        );
+
+        // M0
+        patient.setDistantDisease(
+                new DistantDisease(
+                        false, false, false,
+                        false, false,
+                        LdhStatus.NOT_RECORDED
+                )
+        );
+
+        patient.getClinicalContext()
+                .setSuspiciousRegionalNode(false);
+
+        patient.getClinicalContext()
+                .setBaselineImagingStatus(
+                        BaselineImagingStatus.UNKNOWN
+                );
+
+        MelanomaExpertSystem system = new MelanomaExpertSystem();
+
+        EvaluationResult result = system.evaluate(patient);
+
+        // TNM must be complete
+        assertEquals(
+                EvaluationStatus.COMPLETE,
+                result.getStatus()
+        );
+
+        assertEquals(
+                MelanomaStage.IIB,
+                result.getClassification().getStage()
+        );
+
+        // INF-04 must activate
+        assertTrue(
+                result.getExplanations().stream()
+                        .anyMatch(e -> e.startsWith("INF-04:"))
+        );
+
+        // REC-02F must request missing imaging information
+        assertTrue(
+                result.getRecommendations().stream()
+                        .anyMatch(r ->
+                                r.startsWith("REC-02F:")
+                                        && r.contains("unknown")
+                        )
+        );
+
+        // REC-02C must NOT activate
+        assertFalse(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-02C:"))
+        );
+    }
+
+
+    @Test
+    void evaluateShouldRecommendRegionalUltrasoundForStageIB() {
+
+        Patient patient = new Patient(40009);
+
+        // T2a: Breslow 1.5 mm, without ulceration
+        patient.setPrimaryTumor(
+                new PrimaryTumor(1.5, false)
+        );
+
+        // N0
+        patient.setRegionalDisease(
+                new RegionalDisease(
+                        0, false, false,
+                        false, false, false
+                )
+        );
+
+        // M0
+        patient.setDistantDisease(
+                new DistantDisease(
+                        false, false, false,
+                        false, false,
+                        LdhStatus.NOT_RECORDED
+                )
+        );
+
+        patient.getClinicalContext()
+                .setSuspiciousRegionalNode(false);
+
+        patient.getClinicalContext()
+                .setRegionalNodeUltrasoundStatus(
+                        BaselineImagingStatus.NOT_PERFORMED
+                );
+
+        MelanomaExpertSystem system = new MelanomaExpertSystem();
+
+        EvaluationResult result = system.evaluate(patient);
+
+        // Expected classification: T2a N0 M0 -> IB
+        assertEquals(
+                EvaluationStatus.COMPLETE,
+                result.getStatus()
+        );
+
+        assertEquals(
+                MelanomaStage.IB,
+                result.getClassification().getStage()
+        );
+
+        // INF-02 identifies clinically node-negative patient
+        assertTrue(
+                result.getExplanations().stream()
+                        .anyMatch(e -> e.startsWith("INF-02:"))
+        );
+
+        // REC-02B must recommend regional ultrasound
+        assertTrue(
+                result.getRecommendations().stream()
+                        .anyMatch(r ->
+                                r.startsWith("REC-02B:")
+                                        && r.contains("regional lymph node ultrasound")
+                        )
+        );
+    }
+
+
+    @Test
+    void evaluateShouldRequestUltrasoundInformationWhenUnknown() {
+
+        Patient patient = new Patient(40011);
+
+        patient.setPrimaryTumor(
+                new PrimaryTumor(1.5, false)
+        );
+
+        patient.setRegionalDisease(
+                new RegionalDisease(
+                        0, false, false,
+                        false, false, false
+                )
+        );
+
+        patient.setDistantDisease(
+                new DistantDisease(
+                        false, false, false,
+                        false, false,
+                        LdhStatus.NOT_RECORDED
+                )
+        );
+
+        patient.getClinicalContext()
+                .setSuspiciousRegionalNode(false);
+
+        patient.getClinicalContext()
+                .setRegionalNodeUltrasoundStatus(
+                        BaselineImagingStatus.UNKNOWN
+                );
+
+        EvaluationResult result =
+                new MelanomaExpertSystem().evaluate(patient);
+
+        assertEquals(
+                EvaluationStatus.COMPLETE,
+                result.getStatus()
+        );
+
+        assertEquals(
+                MelanomaStage.IB,
+                result.getClassification().getStage()
+        );
+
+        // Unknown status -> request information
+        assertTrue(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-02D:"))
+        );
+
+        // Must not recommend an unperformed ultrasound
+        assertFalse(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-02B:"))
+        );
+    }
+
+
+    @Test
+    void evaluateShouldRecommendBaselineImagingForStageIIIA() {
+
+        Patient patient = new Patient(40012);
+
+        // T2a: Breslow 1.5 mm, no ulceration
+        patient.setPrimaryTumor(
+                new PrimaryTumor(1.5, false)
+        );
+
+        // N1a: one clinically occult positive regional node
+        patient.setRegionalDisease(
+                new RegionalDisease(
+                        1, false, false,
+                        false, false, false
+                )
+        );
+
+        // M0: no distant metastases
+        patient.setDistantDisease(
+                new DistantDisease(
+                        false, false, false,
+                        false, false,
+                        LdhStatus.NOT_RECORDED
+                )
+        );
+
+        patient.getClinicalContext()
+                .setBaselineImagingStatus(
+                        BaselineImagingStatus.NOT_PERFORMED
+                );
+
+        EvaluationResult result =
+                new MelanomaExpertSystem().evaluate(patient);
+
+        // Verify complete classification
+        assertEquals(
+                EvaluationStatus.COMPLETE,
+                result.getStatus()
+        );
+
+        assertEquals(
+                MelanomaStage.IIIA,
+                result.getClassification().getStage()
+        );
+
+        // Verify REC-02G activates
+        assertTrue(
+                result.getRecommendations().stream()
+                        .anyMatch(r ->
+                                r.startsWith("REC-02G:")
+                        )
+        );
+
+        // REC-02C is only for IIB-IIC
+        assertFalse(
+                result.getRecommendations().stream()
+                        .anyMatch(r ->
+                                r.startsWith("REC-02C:")
+                        )
+        );
+    }
+
+
+    @Test
+    void evaluateShouldNotRecommendBaselineImagingForStageIIIAWhenComplete() {
+
+        Patient patient = new Patient(40013);
+
+        patient.setPrimaryTumor(
+                new PrimaryTumor(1.5, false)
+        );
+
+        patient.setRegionalDisease(
+                new RegionalDisease(
+                        1, false, false,
+                        false, false, false
+                )
+        );
+
+        patient.setDistantDisease(
+                new DistantDisease(
+                        false, false, false,
+                        false, false,
+                        LdhStatus.NOT_RECORDED
+                )
+        );
+
+        patient.getClinicalContext()
+                .setBaselineImagingStatus(
+                        BaselineImagingStatus.COMPLETE
+                );
+
+        EvaluationResult result =
+                new MelanomaExpertSystem().evaluate(patient);
+
+        assertEquals(
+                EvaluationStatus.COMPLETE,
+                result.getStatus()
+        );
+
+        assertEquals(
+                MelanomaStage.IIIA,
+                result.getClassification().getStage()
+        );
+
+        // REC-02G must not activate
+        assertFalse(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-02G:"))
+        );
+
+        // REC-02F must not activate either
+        assertFalse(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-02F:"))
+        );
+    }
+
+
+    @Test
+    void evaluateShouldRecommendRoutineFollowUp() {
+
+        Patient patient = new Patient(40014);
+
+        // T2a: Breslow 1.5 mm, no ulceration
+        patient.setPrimaryTumor(
+                new PrimaryTumor(1.5, false)
+        );
+
+        // N0
+        patient.setRegionalDisease(
+                new RegionalDisease(
+                        0, false, false,
+                        false, false, false
+                )
+        );
+
+        // M0
+        patient.setDistantDisease(
+                new DistantDisease(
+                        false, false, false,
+                        false, false,
+                        LdhStatus.NOT_RECORDED
+                )
+        );
+
+        // Clinical context: routine follow-up
+        patient.getClinicalContext().setSurgeryStatus(
+                SurgeryStatus.COMPLETE
+        );
+
+        patient.getClinicalContext().setDiseaseStatus(
+                DiseaseStatus.NO_EVIDENCE_OF_DISEASE
+        );
+
+        patient.getClinicalContext()
+                .setNewSymptoms(false);
+
+        patient.getClinicalContext()
+                .setSuspiciousRegionalNode(false);
+
+        patient.getClinicalContext()
+                .setCurrentlyUnderTreatment(false);
+
+        EvaluationResult result =
+                new MelanomaExpertSystem().evaluate(patient);
+
+        // Classification
+        assertEquals(
+                EvaluationStatus.COMPLETE,
+                result.getStatus()
+        );
+
+        assertEquals(
+                MelanomaStage.IB,
+                result.getClassification().getStage()
+        );
+
+        // INF-05: routine follow-up scenario
+        assertTrue(
+                result.getExplanations().stream()
+                        .anyMatch(e -> e.startsWith("INF-05:"))
+        );
+
+        // REC-03A: routine follow-up recommendation
+        assertTrue(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-03A:"))
+        );
+    }
+
+
+
+    @Test
+    void evaluateShouldNotRecommendRoutineFollowUpWhenNewSymptoms() {
+
+        Patient patient = new Patient(40015);
+
+        // Same melanoma classification as patient 40014
+        patient.setPrimaryTumor(
+                new PrimaryTumor(1.5, false)
+        );
+
+        patient.setRegionalDisease(
+                new RegionalDisease(
+                        0, false, false,
+                        false, false, false
+                )
+        );
+
+        patient.setDistantDisease(
+                new DistantDisease(
+                        false, false, false,
+                        false, false,
+                        LdhStatus.NOT_RECORDED
+                )
+        );
+
+        // Clinical context
+        patient.getClinicalContext().setSurgeryStatus(
+                SurgeryStatus.COMPLETE
+        );
+
+        patient.getClinicalContext().setDiseaseStatus(
+                DiseaseStatus.NO_EVIDENCE_OF_DISEASE
+        );
+
+        patient.getClinicalContext().setNewSymptoms(true);
+
+        patient.getClinicalContext()
+                .setSuspiciousRegionalNode(false);
+
+        patient.getClinicalContext()
+                .setCurrentlyUnderTreatment(false);
+
+        EvaluationResult result =
+                new MelanomaExpertSystem().evaluate(patient);
+
+        // TNM classification remains complete
+        assertEquals(
+                EvaluationStatus.COMPLETE,
+                result.getStatus()
+        );
+
+        assertEquals(
+                MelanomaStage.IB,
+                result.getClassification().getStage()
+        );
+
+        // INF-05 must NOT activate
+        assertFalse(
+                result.getExplanations().stream()
+                        .anyMatch(e -> e.startsWith("INF-05:"))
+        );
+
+        // REC-03A must NOT activate
+        assertFalse(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-03A:"))
+        );
+
+
+        // New symptoms must trigger REC-03B
+        assertTrue(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-03B:"))
+        );
+
+
+        // New symptoms must trigger REC-03B
+        assertTrue(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-03B:"))
+        );
+
+    }
+
+
+    @Test
+    void evaluateShouldRecommendAssessmentForSuspiciousRegionalNodes() {
+
+        Patient patient = new Patient(40016);
+
+        // T2a
+        patient.setPrimaryTumor(
+                new PrimaryTumor(1.5, false)
+        );
+
+        // N0 based on currently recorded staging data
+        patient.setRegionalDisease(
+                new RegionalDisease(
+                        0, false, false,
+                        false, false, false
+                )
+        );
+
+        // M0
+        patient.setDistantDisease(
+                new DistantDisease(
+                        false, false, false,
+                        false, false,
+                        LdhStatus.NOT_RECORDED
+                )
+        );
+
+        // Follow-up clinical context
+        patient.getClinicalContext().setSurgeryStatus(
+                SurgeryStatus.COMPLETE
+        );
+
+        patient.getClinicalContext().setDiseaseStatus(
+                DiseaseStatus.NO_EVIDENCE_OF_DISEASE
+        );
+
+        patient.getClinicalContext().setNewSymptoms(false);
+
+        patient.getClinicalContext()
+                .setSuspiciousRegionalNode(true);
+
+        patient.getClinicalContext()
+                .setCurrentlyUnderTreatment(false);
+
+        EvaluationResult result =
+                new MelanomaExpertSystem().evaluate(patient);
+
+        // Existing TNM classification
+        assertEquals(
+                EvaluationStatus.COMPLETE,
+                result.getStatus()
+        );
+
+        assertEquals(
+                MelanomaStage.IB,
+                result.getClassification().getStage()
+        );
+
+        // INF-01: suspected nodal disease
+        assertTrue(
+                result.getExplanations().stream()
+                        .anyMatch(e -> e.startsWith("INF-01:"))
+        );
+
+        // REC-03C: targeted nodal assessment
+        assertTrue(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-03C:"))
+        );
+
+        // Routine follow-up must not activate
+        assertFalse(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-03A:"))
+        );
+    }
+
+
+    @Test
+    void evaluateShouldRecommendAdjuvantAssessmentForStageIIB() {
+
+        Patient patient = new Patient(40017);
+
+        // T3b: Breslow 3.0 mm, ulcerated
+        patient.setPrimaryTumor(
+                new PrimaryTumor(3.0, true)
+        );
+
+        // N0
+        patient.setRegionalDisease(
+                new RegionalDisease(
+                        0, false, false,
+                        false, false, false
+                )
+        );
+
+        // M0
+        patient.setDistantDisease(
+                new DistantDisease(
+                        false, false, false,
+                        false, false,
+                        LdhStatus.NOT_RECORDED
+                )
+        );
+
+        // Clinical context
+        patient.getClinicalContext().setSurgeryStatus(
+                SurgeryStatus.COMPLETE
+        );
+
+        patient.getClinicalContext().setDiseaseStatus(
+                DiseaseStatus.NO_EVIDENCE_OF_DISEASE
+        );
+
+        patient.getClinicalContext()
+                .setCurrentlyUnderTreatment(false);
+
+        patient.getClinicalContext()
+                .setAdjuvantEligibilityAssessed(false);
+
+        EvaluationResult result =
+                new MelanomaExpertSystem().evaluate(patient);
+
+        // Verify classification
+        assertEquals(
+                EvaluationStatus.COMPLETE,
+                result.getStatus()
+        );
+
+        assertEquals(
+                MelanomaStage.IIB,
+                result.getClassification().getStage()
+        );
+
+        // REC-04A must activate
+        assertTrue(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-04A:"))
+        );
+    }
+
+    @Test
+    void evaluateShouldNotRecommendAdjuvantAssessmentWhenAlreadyAssessed() {
+
+        Patient patient = new Patient(40018);
+
+        // T3b N0 M0 -> Stage IIB
+        patient.setPrimaryTumor(
+                new PrimaryTumor(3.0, true)
+        );
+
+        patient.setRegionalDisease(
+                new RegionalDisease(
+                        0, false, false,
+                        false, false, false
+                )
+        );
+
+        patient.setDistantDisease(
+                new DistantDisease(
+                        false, false, false,
+                        false, false,
+                        LdhStatus.NOT_RECORDED
+                )
+        );
+
+        // Clinical context
+        patient.getClinicalContext().setSurgeryStatus(
+                SurgeryStatus.COMPLETE
+        );
+
+        patient.getClinicalContext().setDiseaseStatus(
+                DiseaseStatus.NO_EVIDENCE_OF_DISEASE
+        );
+
+        patient.getClinicalContext()
+                .setCurrentlyUnderTreatment(false);
+
+        // Eligibility assessment already completed
+        patient.getClinicalContext()
+                .setAdjuvantEligibilityAssessed(true);
+
+        EvaluationResult result =
+                new MelanomaExpertSystem().evaluate(patient);
+
+        assertEquals(
+                EvaluationStatus.COMPLETE,
+                result.getStatus()
+        );
+
+        assertEquals(
+                MelanomaStage.IIB,
+                result.getClassification().getStage()
+        );
+
+        // REC-04A must NOT activate
+        assertFalse(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-04A:"))
+        );
+    }
+
+
+    @Test
+    void evaluateShouldRequestAdjuvantAssessmentInformationWhenUnknown() {
+
+        Patient patient = new Patient(40019);
+
+        // T3b N0 M0 -> Stage IIB
+        patient.setPrimaryTumor(
+                new PrimaryTumor(3.0, true)
+        );
+
+        patient.setRegionalDisease(
+                new RegionalDisease(
+                        0, false, false,
+                        false, false, false
+                )
+        );
+
+        patient.setDistantDisease(
+                new DistantDisease(
+                        false, false, false,
+                        false, false,
+                        LdhStatus.NOT_RECORDED
+                )
+        );
+
+        // Clinical context
+        patient.getClinicalContext().setSurgeryStatus(
+                SurgeryStatus.COMPLETE
+        );
+
+        patient.getClinicalContext().setDiseaseStatus(
+                DiseaseStatus.NO_EVIDENCE_OF_DISEASE
+        );
+
+        patient.getClinicalContext()
+                .setCurrentlyUnderTreatment(false);
+
+        // Do not set adjuvantEligibilityAssessed.
+        // Its default value is null (unknown).
+
+        EvaluationResult result =
+                new MelanomaExpertSystem().evaluate(patient);
+
+        assertEquals(
+                EvaluationStatus.COMPLETE,
+                result.getStatus()
+        );
+
+        assertEquals(
+                MelanomaStage.IIB,
+                result.getClassification().getStage()
+        );
+
+        // Unknown assessment status -> REC-04B
+        assertTrue(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-04B:"))
+        );
+
+        // Must not assume assessment has not been performed
+        assertFalse(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-04A:"))
+        );
+    }
+
+
+    @Test
+    void evaluateShouldGenerateMultipleRecommendations() {
+
+        Patient patient = new Patient(40020);
+
+        patient.setPrimaryTumor(
+                new PrimaryTumor(3.0, true)
+        );
+
+        patient.setRegionalDisease(
+                new RegionalDisease(
+                        0, false, false,
+                        false, false, false
+                )
+        );
+
+        patient.setDistantDisease(
+                new DistantDisease(
+                        false, false, false,
+                        false, false,
+                        LdhStatus.NOT_RECORDED
+                )
+        );
+
+        ClinicalContext context = patient.getClinicalContext();
+
+        context.setSurgeryStatus(SurgeryStatus.COMPLETE);
+        context.setDiseaseStatus(
+                DiseaseStatus.NO_EVIDENCE_OF_DISEASE
+        );
+
+        context.setNewSymptoms(false);
+        context.setSuspiciousRegionalNode(false);
+        context.setCurrentlyUnderTreatment(false);
+
+        context.setBaselineImagingStatus(
+                BaselineImagingStatus.NOT_PERFORMED
+        );
+
+        context.setAdjuvantEligibilityAssessed(false);
+
+        EvaluationResult result =
+                new MelanomaExpertSystem().evaluate(patient);
+
+        // Classification
+        assertEquals(
+                EvaluationStatus.COMPLETE,
+                result.getStatus()
+        );
+
+        assertEquals(
+                MelanomaStage.IIB,
+                result.getClassification().getStage()
+        );
+
+        // Baseline imaging recommendation
+        assertTrue(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-02C:"))
+        );
+
+        // Routine follow-up recommendation
+        assertTrue(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-03A:"))
+        );
+
+        // Adjuvant eligibility assessment
+        assertTrue(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-04A:"))
+        );
+
+        // Must not activate stage III-IV imaging rule
+        assertFalse(
+                result.getRecommendations().stream()
+                        .anyMatch(r -> r.startsWith("REC-02G:"))
+        );
+    }
+
+
+    @Test
+    void evaluateShouldBlockRecommendationsWhenTnmIncomplete() {
+
+        Patient patient = new Patient(40021);
+
+        // Missing Breslow thickness
+        patient.setPrimaryTumor(
+                new PrimaryTumor(null, true)
+        );
+
+        patient.setRegionalDisease(
+                new RegionalDisease(
+                        0, false, false,
+                        false, false, false
+                )
+        );
+
+        patient.setDistantDisease(
+                new DistantDisease(
+                        false, false, false,
+                        false, false,
+                        LdhStatus.NOT_RECORDED
+                )
+        );
+
+        ClinicalContext context = patient.getClinicalContext();
+
+        context.setSurgeryStatus(SurgeryStatus.COMPLETE);
+        context.setDiseaseStatus(
+                DiseaseStatus.NO_EVIDENCE_OF_DISEASE
+        );
+
+        context.setNewSymptoms(false);
+        context.setSuspiciousRegionalNode(false);
+        context.setCurrentlyUnderTreatment(false);
+
+        context.setBaselineImagingStatus(
+                BaselineImagingStatus.NOT_PERFORMED
+        );
+
+        context.setAdjuvantEligibilityAssessed(false);
+
+        EvaluationResult result =
+                new MelanomaExpertSystem().evaluate(patient);
+
+        // TNM must remain incomplete
+        assertEquals(
+                EvaluationStatus.INCOMPLETE,
+                result.getStatus()
+        );
+
+        assertNull(
+                result.getClassification().getTCategory()
+        );
+
+        // No clinical recommendations may be generated
+        assertTrue(
+                result.getRecommendations().isEmpty()
+        );
+
+        // The system must explain why recommendations are blocked
+        assertTrue(
+                result.getExplanations().stream()
+                        .anyMatch(e ->
+                                e.contains(
+                                        "Clinical recommendations are blocked"
+                                )
+                        )
+        );
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
