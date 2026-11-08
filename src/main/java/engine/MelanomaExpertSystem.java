@@ -1,3 +1,4 @@
+package engine;
 
 import model.Patient;
 import model.MelanomaClassification;
@@ -10,7 +11,7 @@ import model.ClinicalFinding;
 import org.kie.api.KieServices;
 import org.kie.api.runtime.KieContainer;
 import org.kie.api.runtime.KieSession;
- //MelanomaExpertSystem.java se encarga de ejecutar las reglas.
+ //engine.MelanomaExpertSystem.java se encarga de ejecutar las reglas.
 public class MelanomaExpertSystem {
 
     private final KieContainer kieContainer;

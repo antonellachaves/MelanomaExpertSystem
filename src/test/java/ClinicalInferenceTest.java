@@ -1,4 +1,5 @@
 
+import engine.MelanomaExpertSystem;
 import model.*;
 import org.junit.jupiter.api.Test;
 import org.kie.api.KieServices;
