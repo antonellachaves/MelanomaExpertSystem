@@ -69,14 +69,36 @@ public class MelanomaExpertSystemGUI extends JFrame {
 
         setLayout(new BorderLayout());
 
+
         JLabel title = new JLabel(
                 "Melanoma Clinical Expert System",
                 SwingConstants.CENTER
         );
+        title.setFont(new Font("Segoe UI", Font.BOLD, 26));
+        title.setForeground(new Color(25, 55, 85));
 
-        title.setFont(new Font("Arial", Font.BOLD, 24));
+        JLabel subtitle = new JLabel(
+                "TNM Classification & Clinical Decision Support",
+                SwingConstants.CENTER
+        );
+        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        subtitle.setForeground(new Color(85, 105, 125));
 
-        add(title, BorderLayout.NORTH);
+        JPanel headerPanel = new JPanel();
+        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
+        headerPanel.setBackground(new Color(235, 243, 248));
+        headerPanel.setBorder(
+                BorderFactory.createEmptyBorder(20, 15, 20, 15)
+        );
+
+        title.setAlignmentX(Component.CENTER_ALIGNMENT);
+        subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        headerPanel.add(title);
+        headerPanel.add(Box.createVerticalStrut(6));
+        headerPanel.add(subtitle);
+
+        add(headerPanel, BorderLayout.NORTH);
 
 
         JPanel formPanel = new JPanel(new GridLayout(0, 2, 10, 15));
@@ -87,16 +109,22 @@ public class MelanomaExpertSystemGUI extends JFrame {
 
 
         JLabel patientSection = new JLabel("PATIENT AND PRIMARY TUMOR (T)");
-        patientSection.setFont(new Font("Arial", Font.BOLD, 15));
+
+        patientSection.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        patientSection.setForeground(new Color(25, 55, 85));
 
         formPanel.add(patientSection);
         formPanel.add(new JLabel(""));
 
 
 // Patient ID
-        formPanel.add(new JLabel("Patient ID:"));
+        JLabel patientIdLabel = new JLabel("Patient ID:");
+        patientIdLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+
+        formPanel.add(patientIdLabel);
+
         patientIdField = new JTextField();
-        formPanel.add(patientIdField);
+        formPanel.add(patientIdField);//crea campo donde escribimos identificador de paciente
 
 // Breslow thickness
         formPanel.add(new JLabel("Breslow thickness (mm):"));
@@ -114,7 +142,9 @@ public class MelanomaExpertSystemGUI extends JFrame {
 
 
         JLabel regionalSection = new JLabel("REGIONAL DISEASE (N)");
-        regionalSection.setFont(new Font("Arial", Font.BOLD, 15));
+
+        regionalSection.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        regionalSection.setForeground(new Color(25, 55, 85));
 
         formPanel.add(regionalSection);
         formPanel.add(new JLabel(""));
@@ -171,7 +201,9 @@ public class MelanomaExpertSystemGUI extends JFrame {
 
 
         JLabel distantSection = new JLabel("DISTANT DISEASE (M)");
-        distantSection.setFont(new Font("Arial", Font.BOLD, 15));
+
+        distantSection.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        distantSection.setForeground(new Color(25, 55, 85));
 
         formPanel.add(distantSection);
         formPanel.add(new JLabel(""));
@@ -250,9 +282,8 @@ public class MelanomaExpertSystemGUI extends JFrame {
 // Clinical context section
         JLabel clinicalSection = new JLabel("CLINICAL CONTEXT");
 
-        clinicalSection.setFont(
-                new Font("Arial", Font.BOLD, 15)
-        );
+        clinicalSection.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        clinicalSection.setForeground(new Color(25, 55, 85));
 
         formPanel.add(clinicalSection);
         formPanel.add(new JLabel(""));
@@ -388,9 +419,30 @@ public class MelanomaExpertSystemGUI extends JFrame {
         );
         formPanel.add(adjuvantEligibilityBox);
 
+// Improve the readability of clinical field labels
+        for (Component component : formPanel.getComponents()) {
 
+            if (component instanceof JLabel label) {
 
+                String text = label.getText();
 
+                if (text != null && text.endsWith(":")) {
+                    label.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+                }
+            }
+        }
+
+        // Improve the readability of input fields
+        for (Component component : formPanel.getComponents()) {
+
+            if (component instanceof JComboBox<?>) {
+                component.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+            }
+
+            if (component instanceof JTextField) {
+                component.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+            }
+        }
 
 // Add form to window
 
@@ -400,6 +452,8 @@ public class MelanomaExpertSystemGUI extends JFrame {
 
 
         containerPanel.add(formPanel);
+
+
 
 // Allow vertical scrolling when the form grows
         JScrollPane scrollPane = new JScrollPane(containerPanel);
@@ -417,6 +471,16 @@ public class MelanomaExpertSystemGUI extends JFrame {
         add(scrollPane, BorderLayout.CENTER);
 
         JButton evaluateButton = new JButton("Evaluate Patient");
+
+        evaluateButton.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        evaluateButton.setBackground(new Color(25, 55, 85));
+        evaluateButton.setForeground(Color.WHITE);
+        evaluateButton.setFocusPainted(false);
+        evaluateButton.setOpaque(true);
+        evaluateButton.setUI(new javax.swing.plaf.basic.BasicButtonUI()); //windows no cambie el color
+        evaluateButton.setBorder(
+                BorderFactory.createEmptyBorder(12, 25, 12, 25)
+        );
 
         add(evaluateButton, BorderLayout.SOUTH);
 
@@ -487,14 +551,26 @@ public class MelanomaExpertSystemGUI extends JFrame {
                 }
 
 
-                JTextArea resultsArea = new JTextArea(20, 65);
+                JTextPane resultsArea = new JTextPane();
 
                 resultsArea.setEditable(false);
-                resultsArea.setLineWrap(true);
-                resultsArea.setWrapStyleWord(true);
+                resultsArea.setContentType("text/plain");
+                resultsArea.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+                resultsArea.setMargin(new Insets(20, 25, 20, 25));
+                resultsArea.setForeground(new Color(40, 55, 70));
+                resultsArea.setBackground(Color.WHITE);
+                resultsArea.setPreferredSize(new Dimension(750, 650));
 
-                resultsArea.setFont(new Font("SansSerif", Font.PLAIN, 14));
-                resultsArea.setMargin(new Insets(12, 15, 12, 15));
+                // Clinical report appearance
+                resultsArea.setBackground(Color.WHITE);
+                resultsArea.setForeground(new Color(35, 50, 65));
+
+                resultsArea.setBorder(
+                        BorderFactory.createCompoundBorder(
+                                BorderFactory.createLineBorder(new Color(210, 220, 230)),
+                                BorderFactory.createEmptyBorder(15, 20, 15, 20)
+                        )
+                );
 
                 JScrollPane resultsScrollPane = new JScrollPane(resultsArea);
 
@@ -503,12 +579,12 @@ public class MelanomaExpertSystemGUI extends JFrame {
 
                 String resultsText =
                         "PATIENT EVALUATION\n"
-                                + "========================================\n"
+
                                 + "Patient: " + patient.getPatientId()
                                 + "\nEvaluation status: " + result.getStatus()
 
                                 + "\n\nTNM CLASSIFICATION\n"
-                                + "========================================\n"
+
                                 + "T: " + result.getClassification().getTCategory()
                                 + "\nN: " + result.getClassification().getNCategory()
                                 + "\nM: " + result.getClassification().getMCategory()
@@ -524,12 +600,46 @@ public class MelanomaExpertSystemGUI extends JFrame {
 
 
                 resultsArea.setText(resultsText);
+
+                javax.swing.text.StyledDocument doc =
+                        resultsArea.getStyledDocument();
+
+                javax.swing.text.SimpleAttributeSet titleStyle =
+                        new javax.swing.text.SimpleAttributeSet();
+
+                javax.swing.text.StyleConstants.setBold(titleStyle, true);
+                javax.swing.text.StyleConstants.setFontSize(titleStyle, 16);
+                javax.swing.text.StyleConstants.setForeground(
+                        titleStyle, new Color(25, 55, 85)
+                );
+
+                String[] titles = {
+                        "PATIENT EVALUATION",
+                        "TNM CLASSIFICATION",
+                        "Clinical explanations:",
+                        "Clinical recommendations:",
+                        "Missing clinical information:"
+                };
+
+                for (String sectionTitle : titles) {
+                    int position = resultsText.indexOf(sectionTitle);
+
+                    if (position >= 0) {
+                        doc.setCharacterAttributes(
+                                position,
+                                sectionTitle.length(),
+                                titleStyle,
+                                false
+                        );
+                    }
+                }
+
                 resultsArea.setCaretPosition(0);
 
 
                 JOptionPane optionPane = new JOptionPane(
                         resultsScrollPane,
-                        JOptionPane.INFORMATION_MESSAGE,
+                        JOptionPane.PLAIN_MESSAGE,
                         JOptionPane.DEFAULT_OPTION,
                         null,
                         new Object[]{"Close"},
@@ -541,6 +651,8 @@ public class MelanomaExpertSystemGUI extends JFrame {
                         "Melanoma Expert System - Evaluation Results"
                 );
 
+                dialog.setSize(950, 700);
+                dialog.setLocationRelativeTo(this);
                 dialog.setVisible(true);
 
 
@@ -566,15 +678,26 @@ public class MelanomaExpertSystemGUI extends JFrame {
 
     }
 
+
     public static void main(String[] args) {
 
         SwingUtilities.invokeLater(() -> {
+
+            try {
+                UIManager.setLookAndFeel(
+                        UIManager.getSystemLookAndFeelClassName()
+                );
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
             MelanomaExpertSystemGUI window =
                     new MelanomaExpertSystemGUI();
 
             window.setVisible(true);
         });
     }
+
 
 
     private int readPatientId() {
